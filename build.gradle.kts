@@ -10,4 +10,8 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 kotlin { jvmToolchain(21) }
-application { mainClass = "main.ceres.MainKt" }
+application { mainClass = "ceres.main.MainKt" }
+
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}

@@ -12,7 +12,7 @@ data class Reply(
 
 class InterfaceV1(val config: Config) {
   val client = HttpClient.newHttpClient()
-  val body = HttpRequest.BodyPublishers.ofString(message)
+  // val body = HttpRequest.BodyPublishers.ofString(message)
   
   fun request(messages: List<Pair<String, String>>): Reply {
     val builder = HttpRequest.newBuilder(URI.create(config.baseUrl + "/v1/chat/completions"))
@@ -47,9 +47,9 @@ class InterfaceV1(val config: Config) {
       .jsonObject.getValue("message")
       .jsonObject
 
+    val content = message["content"]?.jsonPrimitive?.contentOrNull
+    val tokens = root["usage"]?.jsonObject?.get("prompt_tokens")?.jsonPrimitive?.intOrNull
 
-    println(content)
-
-
+    return Reply(content, tokens)
   }
 }

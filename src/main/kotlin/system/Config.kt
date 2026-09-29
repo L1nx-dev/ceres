@@ -21,10 +21,15 @@ class Config(xdg: Xdg = Xdg()) {
       ?: default
   }
 
-  val baseUrl = Entry("baseUrl", "http://localhost:8080") { it.jsonPrimitive.content }.value
-  val apiKey = Entry("apiKey", "") { it.jsonPrimitive.content }.value
-  val model   = Entry("model", "default") { it.jsonPrimitive.content }.value
-  val timeout = Entry("timeout", 180)            { it.jsonPrimitive.long }.value
+  val baseUrl   = Entry("baseUrl", "http://localhost:8080") { it.jsonPrimitive.content }.value
+  val apiKey    = Entry("apiKey", "") { it.jsonPrimitive.content }.value
+  val model     = Entry("model", "default") { it.jsonPrimitive.content }.value
+  val timeout   = Entry("timeout", 180)            { it.jsonPrimitive.long }.value
+
+
+  // val baseUrl   = Entry("baseUrl", "https://openrouter.ai/api") { it.jsonPrimitive.content }.value
+  // val model     = Entry("model", "gemma-4-26b-a4b-it:free") { it.jsonPrimitive.content }.value
+  // val timeout   = Entry("timeout", 180)            { it.jsonPrimitive.long }.value
 
   // template
   // val someString = Entry("some_string", "default") { it.jsonPrimitive.content }.value
