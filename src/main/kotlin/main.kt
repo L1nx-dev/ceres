@@ -3,7 +3,7 @@ package ceres.main
 fun main() {
   val xdg = Xdg()
   val config = Config(xdg)
-  val agent = Agent(config)
+  val agent = Agent(config, xdg)
 
   // ==== DEBUG DUMP ====
 

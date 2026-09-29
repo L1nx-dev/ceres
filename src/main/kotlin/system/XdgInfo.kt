@@ -11,6 +11,11 @@ class Xdg() {
       ?.let { Path(it) / "ceres" }
       ?: (home / ".config" / "ceres")
 
+  val share =
+    System.getenv("XDG_DATA_HOME")
+      ?.let { Path(it) / "ceres" }
+      ?: (home / ".local" / "share" / "ceres")
+
   init {
     config.createDirectories()
 
