@@ -9,6 +9,7 @@ fun main() {
 
   println(config.baseUrl)
   println(config.model)
+  println(config.workDir)
 
   // ==== MAIN LOOP ====
 

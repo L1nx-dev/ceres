@@ -5,6 +5,8 @@ import java.net.URI
 import java.time.Duration
 import kotlinx.serialization.json.*
 
+import ceres.tools.ToolDefinition
+
 data class Reply(
   val content: String?,
   val promptTokens: Int?,
@@ -13,16 +15,16 @@ data class Reply(
 
 data class ToolCall(val id: String, val name: String, val arguments: String)
 
-data class ToolDefinition(
+/* data class ToolDefinition(
   val name: String,
   val description: String,
   val parameters: JsonObject,
-)
+) */
 
 class ApiV1(val config: Config) {
   val client = HttpClient.newHttpClient()
   
-  fun request(messages: List<Msg>): Reply {
+  fun request(messages: List<Msg>, tools: List<ToolDefinition>): Reply {
     val builder = HttpRequest.newBuilder(URI.create(config.baseUrl + "/v1/chat/completions"))
       .header("Content-Type", "application/json")
       .timeout(Duration.ofSeconds(config.timeout))
@@ -59,6 +61,16 @@ class ApiV1(val config: Config) {
                   put("content", msg.content)
                 }
               }
+            }
+          }
+        }
+        if (tools.isNotEmpty()) putJsonArray("tools") {
+          for (t in tools) addJsonObject {
+            put("type", "function")
+            putJsonObject("function") {
+              put("name", t.name)
+              put("description", t.description)
+              put("parameters", t.parameters)
             }
           }
         }
