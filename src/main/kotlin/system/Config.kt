@@ -1,4 +1,4 @@
-package main.ceres 
+package ceres.main
 
 import kotlinx.serialization.json.*
 import kotlin.io.path.*
@@ -22,6 +22,7 @@ class Config(xdg: Xdg = Xdg()) {
   }
 
   val baseUrl = Entry("baseUrl", "http://localhost:8080") { it.jsonPrimitive.content }.value
+  val apiKey = Entry("apiKey", "") { it.jsonPrimitive.content }.value
   val model   = Entry("model", "default") { it.jsonPrimitive.content }.value
   val timeout = Entry("timeout", 180)            { it.jsonPrimitive.long }.value
 

@@ -1,4 +1,4 @@
-package main.ceres
+package ceres.main
 
 import kotlin.io.path.*
 import java.nio.file.Files
