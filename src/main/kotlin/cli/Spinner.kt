@@ -17,7 +17,7 @@ class Spinner(
     thread = Thread {
       var i = 0
       while (running) {
-        out.print("${Ansi.RESET}${Ansi.DIM}\r${frames[i++ % frames.length]} | $label")
+        out.print("${Ansi.RESET}${Ansi.DIM}\r${frames[i++ % frames.length]} $label")
         out.flush()
         try { Thread.sleep(100) } catch (_: InterruptedException) { break }
       }
@@ -30,6 +30,6 @@ class Spinner(
     thread?.interrupt()
     thread?.join()
     val mark = if (ok) "${Ansi.GREEN}✔" else "${Ansi.RED}✘"
-    out.println("${Ansi.RESET}\r\u001B[K${mark}${Ansi.RESET}${Ansi.DIM} | $label")
+    out.println("${Ansi.RESET}\r\u001B[K${mark}${Ansi.RESET}${Ansi.DIM} $label")
   }
 }

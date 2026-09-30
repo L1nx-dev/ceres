@@ -18,6 +18,6 @@ fun main() {
   while (true) {
     print("${Ansi.RESET}${Ansi.CYAN}>=> ")
     val line = readlnOrNull() ?: break
-    println("${Ansi.RESET}⚳ | " + agent.prompt(line))
+    println("${Ansi.RESET}⚳ " + agent.prompt(line))
   }
 }
