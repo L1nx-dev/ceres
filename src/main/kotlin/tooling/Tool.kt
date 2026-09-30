@@ -18,3 +18,15 @@ interface Tool {
   val def: ToolDefinition
   fun run(args: JsonObject, ctx: ToolContext): String
 }
+
+object Tools {
+  val list = listOf<Tool>(
+    ReadFile(), 
+    ListFiles(),
+    MakeDir(),
+    EditFile(),
+    MakeFile(),
+    WebSearch(),
+    RemoveFile(),
+  ).associateBy { it.def.name }
+}

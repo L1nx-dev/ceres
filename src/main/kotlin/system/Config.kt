@@ -29,6 +29,9 @@ class Config(xdg: Xdg = Xdg()) {
   val workDir         = Entry("workDir", "")                          { it.jsonPrimitive.content }.value
   val maxToolDepth    = Entry("maxToolDepth", 10)                     { it.jsonPrimitive.int }.value
 
+  val searXNG         = Entry("searXNG", "http://127.0.0.1:8888")     { it.jsonPrimitive.content }.value
+
+
   // template
   // val someString = Entry("some_string", "default") { it.jsonPrimitive.content }.value
   // val someInt    = Entry("some_int", 0)            { it.jsonPrimitive.int }.value

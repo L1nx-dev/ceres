@@ -8,12 +8,7 @@ class Agent(val config: Config, xdg: Xdg) {
   private val llm = ApiV1(config)
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
   private val ctx = ToolContext(root = Path.of(config.workDir).toRealPath())
-  private val tools = listOf<Tool>(
-    ReadFile(), 
-    ListFiles(),
-    MakeDir(),
-    EditFile()
-  ).associateBy { it.def.name }
+  private val tools = Tools.list
   private val history = mutableListOf<Msg>()
 
   fun prompt(input: String): String {
