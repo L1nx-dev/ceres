@@ -5,7 +5,7 @@ import java.nio.file.*
 
 class MakeFile : Tool {
   override val def = ToolDefinition(
-    name = "make_file",
+    name = "create",
     description = "Create a file with the given content (empty if omitted). " +
       "Creates missing parent directories. An existing empty file is filled in. " +
       "A non-empty file is only replaced when overwrite=true. Do not abuse overwrite; use edit_file for changes to existing files.",

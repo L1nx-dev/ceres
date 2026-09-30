@@ -5,7 +5,7 @@ import java.nio.file.*
 
 class RemoveFile : Tool {
   override val def = ToolDefinition(
-    name = "remove_file",
+    name = "remove",
     description = "Removes the specified file or directory; be careful.",
     parameters = buildJsonObject {
       put("type", "object")

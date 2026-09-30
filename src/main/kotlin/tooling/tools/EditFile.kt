@@ -6,7 +6,7 @@ import java.nio.file.*
 
 class EditFile : Tool {
   override val def = ToolDefinition(
-    name = "edit_file",
+    name = "edit",
     description = "Replace one exact occurrence of old_str with new_str in a file. " +
       "old_str must match exactly once, including whitespace; include surrounding lines to make it unique. " +
       "Empty new_str deletes the match. Read the file using ls first.",
