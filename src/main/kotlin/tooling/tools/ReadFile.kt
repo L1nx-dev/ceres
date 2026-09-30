@@ -6,7 +6,7 @@ import java.nio.file.*
 class ReadFile : Tool {
   override val def = ToolDefinition(
     name = "read_file",
-    description = "Read a text file from the workspace. Path is relative to the workspace root.",
+    description = "Read a text file from the workspace.",
     parameters = buildJsonObject {
       put("type", "object")
       putJsonObject("properties") {
