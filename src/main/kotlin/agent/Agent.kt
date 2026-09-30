@@ -3,6 +3,7 @@ package ceres.main
 import ceres.tools.*
 import kotlinx.serialization.json.*
 import java.nio.file.Path
+import ceres.cli.Spinner
 
 class Agent(val config: Config, xdg: Xdg) {
   private val llm = ApiV1(config)
@@ -29,8 +30,18 @@ class Agent(val config: Config, xdg: Xdg) {
 
   private fun runTool(call: ToolCall): String {
     val tool = tools[call.name] ?: return "error: unknown tool ${call.name}"
-    return runCatching {
+    val spinner = Spinner(label(call)).start()
+    val result = runCatching {
       tool.run(Json.parseToJsonElement(call.arguments).jsonObject, ctx)
     }.getOrElse { "error: ${it.message}" }
+    spinner.stop(ok = !result.startsWith("error:"))
+    return result
+  }
+
+  private fun label(call: ToolCall): String {
+    val first = runCatching {
+      Json.parseToJsonElement(call.arguments).jsonObject.values.firstOrNull()?.jsonPrimitive?.contentOrNull
+    }.getOrNull()
+    return if (first == null) call.name else "${call.name}: ${first.take(60)}"
   }
 }

@@ -1,5 +1,7 @@
 package ceres.main
 
+import ceres.cli.*
+
 fun main() {
   val xdg = Xdg()
   val config = Config(xdg)
@@ -14,8 +16,8 @@ fun main() {
   // ==== MAIN LOOP ====
 
   while (true) {
-    print("⚳ > ")
+    print("${Ansi.RESET}${Ansi.CYAN}>=> ")
     val line = readlnOrNull() ?: break
-    println("✔ | " + agent.prompt(line))
+    println("${Ansi.RESET}⚳ | " + agent.prompt(line))
   }
 }
