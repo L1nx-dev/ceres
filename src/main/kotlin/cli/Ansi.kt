@@ -6,6 +6,7 @@ object Ansi {
   const val GREEN = "\u001B[32m"
   const val YELLOW = "\u001B[33m"
   const val CYAN = "\u001B[36m"
+  const val MAGENTA = "\u001B[35m"
   const val BOLD = "\u001B[1m"
   const val DIM = "\u001B[2m"
 

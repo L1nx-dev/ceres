@@ -33,6 +33,7 @@ class Store(path: Path) : AutoCloseable {
     if (version < 1) inTransaction {
       exec("""CREATE TABLE sessions(
         id INTEGER PRIMARY KEY,
+        name TEXT,
         started_at TEXT NOT NULL)""")
       exec("""CREATE TABLE messages(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,12 +51,16 @@ class Store(path: Path) : AutoCloseable {
         ord INTEGER,                            -- render order override; NULL = id
         replaced_by INTEGER REFERENCES messages(id),
         created_at TEXT NOT NULL)""")
+      exec("CREATE UNIQUE INDEX sessions_name ON sessions(name)")
       exec("CREATE INDEX messages_session ON messages(session_id, state)")
       exec("CREATE INDEX messages_ref ON messages(ref)")
       exec("""CREATE VIRTUAL TABLE messages_fts
         USING fts5(content, content='messages', content_rowid='id')""")
       exec("""CREATE TRIGGER messages_ai AFTER INSERT ON messages BEGIN
         INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+      END""")
+      exec("""CREATE TRIGGER messages_ad AFTER DELETE ON messages BEGIN
+        INSERT INTO messages_fts(messages_fts, rowid, content) VALUES('delete', old.id, old.content);
       END""")
       exec("PRAGMA user_version = 1")
     }
@@ -78,12 +83,12 @@ class Store(path: Path) : AutoCloseable {
 
   // ==== SESSIONS ====
 
+  data class SessionInfo(val id: Long, val name: String?, val startedAt: String, val messages: Int, val preview: String?)
+    
   @Synchronized
-  fun newSession(): Long =
-    db.prepareStatement("INSERT INTO sessions(started_at) VALUES (?)", Statement.RETURN_GENERATED_KEYS).use { ps ->
-      ps.setString(1, Instant.now().toString())
-      ps.executeUpdate()
-      ps.generatedKeys.use { it.next(); it.getLong(1) }
+  fun exists(sid: Long): Boolean =
+    db.prepareStatement("SELECT 1 FROM sessions WHERE id = ?").use { ps ->
+      ps.setLong(1, sid); ps.executeQuery().use { it.next() }
     }
 
   @Synchronized
@@ -91,6 +96,56 @@ class Store(path: Path) : AutoCloseable {
     db.createStatement().use { st ->
       st.executeQuery("SELECT id FROM sessions ORDER BY id DESC LIMIT 1").use {
         if (it.next()) it.getLong(1) else null
+      }
+    }
+
+  @Synchronized
+  fun newSession(name: String? = null): Long =
+    db.prepareStatement("INSERT INTO sessions(started_at, name) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS).use { ps ->
+      ps.setString(1, Instant.now().toString())
+      ps.setString(2, name)
+      ps.executeUpdate()
+      ps.generatedKeys.use { it.next(); it.getLong(1) }
+    }
+
+  @Synchronized
+  fun byName(name: String): Long? =
+    db.prepareStatement("SELECT id FROM sessions WHERE name = ?").use { ps ->
+      ps.setString(1, name)
+      ps.executeQuery().use { if (it.next()) it.getLong(1) else null }
+    }
+
+  @Synchronized
+  fun resolve(ref: String): Long? = byName(ref) ?: ref.toLongOrNull()?.takeIf { exists(it) }
+
+  @Synchronized
+  fun rename(sid: Long, name: String) {
+    db.prepareStatement("UPDATE sessions SET name = ? WHERE id = ?").use { ps ->
+      ps.setString(1, name); ps.setLong(2, sid); ps.executeUpdate()
+    }
+  }
+
+  @Synchronized
+  fun delete(sid: Long) = inTransaction {
+    db.prepareStatement("DELETE FROM messages WHERE session_id = ?").use { it.setLong(1, sid); it.executeUpdate() }
+    db.prepareStatement("DELETE FROM sessions WHERE id = ?").use { it.setLong(1, sid); it.executeUpdate() }
+  }
+
+  @Synchronized
+  fun sessions(current: Long, limit: Int = 20): List<SessionInfo> =
+    db.prepareStatement("""
+      SELECT s.id, s.name, s.started_at,
+        (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id),
+        (SELECT substr(content, 1, 60) FROM messages m
+           WHERE m.session_id = s.id AND kind = 'text' AND role = 'USER' AND block_type = 'CHAT'
+           ORDER BY id LIMIT 1)
+      FROM sessions s
+      WHERE s.id = ? OR s.name IS NOT NULL
+         OR EXISTS (SELECT 1 FROM messages m WHERE m.session_id = s.id AND kind = 'text' AND role = 'USER')
+      ORDER BY s.id DESC LIMIT ?""").use { ps ->
+      ps.setLong(1, current); ps.setInt(2, limit)
+      ps.executeQuery().use { rs ->
+        buildList { while (rs.next()) add(SessionInfo(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getString(5))) }
       }
     }
 
