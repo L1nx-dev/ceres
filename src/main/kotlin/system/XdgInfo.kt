@@ -2,10 +2,12 @@ package ceres.main
 
 import kotlin.io.path.*
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
-class Xdg() {
+class Xdg {
   val home = Path(System.getProperty("user.home"))
+
   val config =
     System.getenv("XDG_CONFIG_HOME")
       ?.let { Path(it) / "ceres" }
@@ -16,14 +18,29 @@ class Xdg() {
       ?.let { Path(it) / "ceres" }
       ?: (home / ".local" / "share" / "ceres")
 
-  init {
-    config.createDirectories()
+  val skills = config / "skills"
+  val memory = config / "memory"
 
-    val file = config / "config.json"
-    if (file.notExists()) {
-      val stream = javaClass.getResourceAsStream("/config.json")
-        ?: error("missing resource: /config.json")
-      stream.use { Files.copy(it, file) }
-    }
+  private data class Resource(val name: String, val targetDir: Path)
+
+  private val defaultResources = listOf(
+    Resource("config.json", config),
+    Resource("BOOT.md", config),
+    Resource("SOUL.md", config),
+    Resource("USER.md", config),
+  )
+
+  init {
+    listOf(config, share, skills, memory).forEach { it.createDirectories() }
+    defaultResources.forEach { (name, dir) -> copyResourceIfMissing(name, dir) }
+  }
+
+  private fun copyResourceIfMissing(resourceName: String, targetDir: Path) {
+      val target = targetDir / resourceName
+      if (target.exists()) return
+      target.parent?.createDirectories()
+      javaClass.getResourceAsStream("/$resourceName")
+          ?.use { Files.copy(it, target, StandardCopyOption.REPLACE_EXISTING) }
+          ?: error("missing resource: /$resourceName")
   }
 }

@@ -5,7 +5,7 @@ import kotlinx.serialization.json.*
 class Shell : Tool {
   override val def = ToolDefinition(
     name = "shell",
-    description = "Run a shell command in a sandbox. Working dir is the workspace. No network.",
+    description = "Run a shell command in a sandbox. Do not use for web scraping.",
     parameters = buildJsonObject {
       put("type", "object")
       putJsonObject("properties") {

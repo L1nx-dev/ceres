@@ -27,7 +27,7 @@ class Config(xdg: Xdg = Xdg()) {
   val timeout         = Entry("timeout", 180)                         { it.jsonPrimitive.long }.value
 
   val workDir         = Entry("workDir", "")                          { it.jsonPrimitive.content }.value
-  val maxToolDepth    = Entry("maxToolDepth", 10)                     { it.jsonPrimitive.int }.value
+  val maxToolDepth    = Entry("maxToolDepth", 30)                     { it.jsonPrimitive.int }.value
 
   val searXNG         = Entry("searXNG", "http://127.0.0.1:8888")     { it.jsonPrimitive.content }.value
 

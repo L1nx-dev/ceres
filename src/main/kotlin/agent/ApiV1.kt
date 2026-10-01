@@ -13,13 +13,7 @@ data class Reply(
   val toolCalls: List<ToolCall>?,
 )
 
-data class ToolCall(val id: String, val name: String, val arguments: String)
-
-/* data class ToolDefinition(
-  val name: String,
-  val description: String,
-  val parameters: JsonObject,
-) */
+// data class ToolCall(val id: String, val name: String, val arguments: String)
 
 class ApiV1(val config: Config) {
   val client = HttpClient.newHttpClient()
@@ -36,12 +30,12 @@ class ApiV1(val config: Config) {
             addJsonObject {
               when (msg) {
                 is Msg.Text -> {
-                  put("role", msg.role)
+                  put("role", msg.role.wire)
                   put("content", msg.content)
                 }
                 is Msg.ToolCalls -> {
                   put("role", "assistant")
-                  put("content", JsonNull)
+                  put("content", msg.content)
                   putJsonArray("tool_calls") {
                     for (call in msg.calls) {
                       addJsonObject {

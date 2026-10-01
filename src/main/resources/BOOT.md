@@ -1,0 +1,3 @@
+# GO THROUGH THIS CHECKLIST BEFORE ANYTHING ELSE, INCLUDING THE USER'S PROMPT:
+- Check `date` using shell
+- Use the `tree -L 2`

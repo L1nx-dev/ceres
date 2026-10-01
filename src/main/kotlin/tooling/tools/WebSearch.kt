@@ -6,11 +6,12 @@ import java.net.URLEncoder
 import java.net.http.*
 import java.nio.charset.StandardCharsets
 import java.time.*
-import ceres.main.Config
+import ceres.main.*
 
 private val config = Config()
 
 class WebSearch : Tool {
+override val source = Source.WEB
   override val def = ToolDefinition(
     name = "web_search",
     description = "Search the web and return a list of titles, URLs and snippets.",

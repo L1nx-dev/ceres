@@ -1,2 +1,4 @@
 {
+  "timeout": 120,
+  "workDir": "/home/user/Agent/"
 }

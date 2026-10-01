@@ -1,9 +1,10 @@
 package ceres.tools
 
 import kotlinx.serialization.json.JsonObject
-import java.nio.file.Path
+import java.nio.file.*
 import ceres.main.Config
 import java.util.concurrent.TimeUnit
+import ceres.main.Source
 
 data class ToolDefinition(val name: String, val description: String, val parameters: JsonObject)
 
@@ -11,12 +12,16 @@ class ToolContext(val root: Path) {
   fun resolve(rel: String): Path {
     val p = root.resolve(rel).normalize()
     require(p.startsWith(root)) { "path outside workspace" }
+    var probe = p
+    while (!Files.exists(probe, LinkOption.NOFOLLOW_LINKS)) probe = probe.parent
+    require(probe.toRealPath().startsWith(root)) { "path outside workspace" }
     return p
   }
   fun exec(argv: List<String>, stdin: String?, timeoutSec: Long): String {
     val bwrap = listOf(
       "bwrap",
-      "--unshare-all",            // pid, net, ipc, uts, user, cgroup; add "--share-net" to allow network
+      "--unshare-all",
+      // "--share-net",
       "--die-with-parent",
       "--new-session",
       "--clearenv",
@@ -31,6 +36,7 @@ class ToolContext(val root: Path) {
       "--tmpfs", "/tmp",
       "--bind", root.toString(), "/Ceres", // TODO: make configurable
       "--chdir", "/Ceres",
+      "--ro-bind", "/etc/localtime", "/etc/localtime",
       "--",
     )
     val p = ProcessBuilder(bwrap + argv).redirectErrorStream(true).start()
@@ -48,6 +54,7 @@ class ToolContext(val root: Path) {
 }
 
 interface Tool {
+  val source: Source get() = Source.TOOL
   val def: ToolDefinition
   fun run(args: JsonObject, ctx: ToolContext): String
 }
