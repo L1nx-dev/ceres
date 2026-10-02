@@ -26,14 +26,34 @@ class Agent(val config: Config, private val xdg: Xdg) {
   }
 
   private fun seed() {
-    val text = listOf("SOUL.md", "USER.md", "BOOT.md")
+    val text = listOf("SOUL.md", "USER.md")
       .map { xdg.config / it }
       .filter { it.exists() }
       .map { it.readText().trim() }
       .filter { it.isNotEmpty() }
       .joinToString("\n\n")
-    if (text.isNotEmpty())
-      record(Msg.Text(Role.SYSTEM, text, type = BlockType.PINNED, source = Source.SYSTEM))
+
+    val bootFile = xdg.config / "BOOT.script"
+    val shellOut = if (bootFile.exists()) {
+        val cmds = bootFile.readLines()
+          .map { it.trim() }
+          .filter { it.isNotEmpty() && !it.startsWith("#") }
+        if (cmds.isEmpty()) ""
+        else cmds.joinToString("\n\n") { cmd -> "$ $cmd\n${exec(cmd)}" }
+          .let { "#SYSTEM INFO\n\n$it" }
+    } else ""
+
+    val full = listOf(text, shellOut).filter { it.isNotEmpty() }.joinToString("\n\n")
+
+    if (full.isNotEmpty())
+      record(Msg.Text(Role.SYSTEM, full, type = BlockType.PINNED, source = Source.SYSTEM))
+  }
+
+  private fun exec(cmd: String): String {
+    val tool = tools["shell"] ?: return "error: shell tool not found"
+    return runCatching {
+      tool.run(buildJsonObject { put("command", cmd) }, ctx)
+    }.getOrElse { "error: ${it.message}" }
   }
 
   private fun record(msg: Msg) {
@@ -51,19 +71,23 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun removeChat(id: Long) = store.delete(id)
 
   fun prompt(input: String): String {
-    record(Msg.Text(Role.USER, input))
-    repeat(config.maxToolDepth) {
-      val reply = llm.request(history, tools.values.map { it.def })
-      val calls = reply.toolCalls
-      if (calls.isNullOrEmpty()) {
-        val text = reply.content ?: ""
-        if (text.isNotBlank()) record(Msg.Text(Role.ASSISTANT, text, source = Source.MODEL))
-        return text
+      record(Msg.Text(Role.USER, input))
+      repeat(config.maxToolDepth) {
+          val reply = llm.request(history, tools.values.map { it.def })
+          val calls = reply.toolCalls
+          if (calls.isNullOrEmpty()) {
+              val text = reply.content.orEmpty()
+              if (text.isNotBlank()) {
+                  record(Msg.Text(Role.ASSISTANT, text, source = Source.MODEL))
+                  return text
+              }
+              record(Msg.Text(Role.USER, "SYSTEM: cannot return an empty string", source = Source.SYSTEM))
+              return@repeat
+          }
+          record(Msg.ToolCalls(calls, reply.content))
+          for (call in calls) record(runTool(call))
       }
-      record(Msg.ToolCalls(calls, reply.content))
-      for (call in calls) record(runTool(call))
-    }
-    return "step limit reached"
+      return "step limit reached"
   }
 
   private fun runTool(call: ToolCall): Msg.ToolResult {

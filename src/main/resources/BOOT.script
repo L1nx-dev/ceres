@@ -1,0 +1,4 @@
+# Command to be executed through the shell tool, when a new chat is created
+# One per line, plain command
+date
+tree -L 2
