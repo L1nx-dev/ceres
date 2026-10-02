@@ -11,7 +11,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
   private val llm = ApiV1(config)
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
   private val ctx = ToolContext(root = Path.of(config.workDir).toRealPath())
-  private val tools = Tools.list
+  private val tools = Tools(xdg).list
 
   private val store = Store(xdg.share / "sessions.db")
   private var sid: Long = 0

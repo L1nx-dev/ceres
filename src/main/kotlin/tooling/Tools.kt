@@ -5,6 +5,10 @@ import java.nio.file.*
 import ceres.main.Config
 import java.util.concurrent.TimeUnit
 import ceres.main.Source
+import ceres.main.Xdg
+import java.nio.file.Path
+import kotlin.io.path.div
+import java.nio.file.StandardCopyOption
 
 data class ToolDefinition(val name: String, val description: String, val parameters: JsonObject)
 
@@ -59,7 +63,7 @@ interface Tool {
   fun run(args: JsonObject, ctx: ToolContext): String
 }
 
-object Tools {
+class Tools(xdg: Xdg) {
   val list = listOf<Tool>(
     ReadFile(), 
     ListFiles(),
@@ -69,5 +73,6 @@ object Tools {
     WebSearch(),
     RemoveFile(),
     Shell(),
+    Remember(xdg.config / "SKETCHPAD.md"),
   ).associateBy { it.def.name }
 }

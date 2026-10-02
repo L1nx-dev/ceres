@@ -25,9 +25,10 @@ class Xdg {
 
   private val defaultResources = listOf(
     Resource("config.json", config),
-    Resource("BOOT.script", config),
+    Resource("boot.script", config),
     Resource("SOUL.md", config),
     Resource("USER.md", config),
+    Resource("SKETCHPAD.md", config),
   )
 
   init {
