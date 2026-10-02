@@ -1,6 +1,7 @@
 package ceres.main
 
 import ceres.cli.*
+import org.jline.utils.InfoCmp
 
 class Commands(private val agent: Agent) {
   private val nameRe = Regex("[A-Za-z][A-Za-z0-9_.-]{0,31}")
@@ -9,7 +10,8 @@ class Commands(private val agent: Agent) {
     val p = line.trim().split(Regex("\\s+"))
     return when (p[0]) {
       "/chat" -> chat(p.drop(1))
-      else -> "unknown command: ${p[0]}"
+      "/help" -> help(p.drop(1))
+      else -> "unknown command: ${p[0]}. use /help to list all available commands."
     }
   }
 
@@ -20,6 +22,12 @@ class Commands(private val agent: Agent) {
     "switch" -> switch(a.getOrNull(1))
     "remove" -> remove(a.getOrNull(1))
     else -> "usage: /chat list | new [name] | rename <old> <new> | switch <name|id> | remove <name|id>"
+  }
+
+  private fun help(a: List<String>): String = when (a.firstOrNull()) {
+    "chat" -> "usage: /chat list | new [name] | rename <old> <new> | switch <name|id> | remove <name|id>"
+    null -> "commands: \n/chat - manage sessions \n/clear - clears the screen"
+    else -> "use /help to list all commands, or /help [command] for detailed instructions."
   }
 
   private fun list(): String =

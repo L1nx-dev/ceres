@@ -8,8 +8,7 @@ import org.jline.reader.UserInterruptException
 import org.jline.terminal.TerminalBuilder
 import kotlin.io.path.div
 import org.jline.reader.impl.DefaultHighlighter
-import org.jline.utils.AttributedString
-import org.jline.utils.AttributedStyle
+import org.jline.utils.*
 import org.jline.reader.impl.LineReaderImpl
 
 class Chat {
@@ -27,35 +26,54 @@ class Chat {
 
     // ==== MAIN LOOP ====
     val terminal = TerminalBuilder.builder().system(true).build()
+    val tokenRe = Regex("\\s+|\\S+")
+    val yellow = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW)
+
     val reader = LineReaderBuilder.builder()
       .terminal(terminal)
-        .highlighter(object : DefaultHighlighter() {
-          override fun highlight(reader: LineReader, buffer: String): AttributedString {
-            val cmd = buffer.startsWith("/")
-            (reader as LineReaderImpl).setPrompt(
-              if (cmd) "\u001b[35m=>> \u001b[0m" else "\u001b[36m>=> \u001b[0m"
-            )
-            val color = if (cmd) AttributedStyle.MAGENTA else AttributedStyle.CYAN
-            return AttributedString(buffer, AttributedStyle.DEFAULT.foreground(color))
+      .highlighter(object : DefaultHighlighter() {
+        override fun highlight(reader: LineReader, buffer: String): AttributedString {
+          val cmd = buffer.startsWith("/")
+          (reader as LineReaderImpl).setPrompt(
+            if (cmd) "\u001b[35m=>> \u001b[0m" else "\u001b[36m>=> \u001b[0m"
+          )
+          val base = AttributedStyle.DEFAULT.foreground(if (cmd) AttributedStyle.MAGENTA else AttributedStyle.CYAN)
+          if (!cmd) return AttributedString(buffer, base)
+
+          val tokens = tokenRe.findAll(buffer).map { it.value }.toList()
+          val words = tokens.count { it.isNotBlank() }
+          val sb = AttributedStringBuilder()
+          var n = 0
+          for (t in tokens) {
+            if (t.isBlank()) { sb.styled(base, t); continue }
+            n++
+            val isYellow = if (words == 2) n == 2 else n >= 3
+            sb.styled(if (isYellow) yellow else base, t)
           }
-        })
+          return sb.toAttributedString()
+        }
+      })
       .variable(LineReader.HISTORY_FILE, xdg.share / "history")
       .build()
 
     while (true) {
       val input = try {
         reader.readLine("${Ansi.CYAN}>=> ${Ansi.RESET}")
-      } catch (_: UserInterruptException) {   // Ctrl+C: drop the line
+      } catch (_: UserInterruptException) {
         continue
-      } catch (_: EndOfFileException) {       // Ctrl+D: quit
+      } catch (_: EndOfFileException) {
         break
       }
-      if (input.isBlank()) continue
-      println(
-        if (input.startsWith("/")) commands.run(input)
-        else "${Ansi.RESET}⚳ " + agent.prompt(input)
-      )
-    }
+      when {
+        input.isBlank() -> {}
+        input == "/clear" -> {
+          terminal.puts(InfoCmp.Capability.clear_screen)
+          terminal.flush()
+        }
+        input.startsWith("/") -> println(commands.run(input))
+        else -> println("${Ansi.RESET}⚳ " + agent.prompt(input))
+      }
     terminal.close()
+    }
   }
 }
