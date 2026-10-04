@@ -9,6 +9,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
     implementation("org.jline:jline:3.26.3")
+    implementation("org.jsoup:jsoup:1.18.1")
     testImplementation(kotlin("test"))
 }
 kotlin { jvmToolchain(21) }

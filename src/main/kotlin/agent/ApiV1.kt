@@ -13,18 +13,22 @@ data class Reply(
   val toolCalls: List<ToolCall>?,
 )
 
-// data class ToolCall(val id: String, val name: String, val arguments: String)
-
 class ApiV1(val config: Config) {
   val client = HttpClient.newHttpClient()
   
-  fun request(messages: List<Msg>, tools: List<ToolDefinition>): Reply {
+  fun request(
+    messages: List<Msg>,
+    tools: List<ToolDefinition>,
+    think: Boolean = true,
+    model: String = config.model,
+  ): Reply {
     val builder = HttpRequest.newBuilder(URI.create(config.baseUrl + "/v1/chat/completions"))
       .header("Content-Type", "application/json")
       .timeout(Duration.ofSeconds(config.timeout))
 
       val json = buildJsonObject {
-        put("model", config.model)
+      put("model", model)
+      if (!think) putJsonObject("chat_template_kwargs") { put("enable_thinking", false) }
         putJsonArray("messages") {
           for (msg in messages) {
             addJsonObject {

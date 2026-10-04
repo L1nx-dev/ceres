@@ -10,7 +10,27 @@ import kotlin.io.path.*
 class Agent(val config: Config, private val xdg: Xdg) {
   private val llm = ApiV1(config)
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
-  private val ctx = ToolContext(root = Path.of(config.workDir).toRealPath())
+
+  private val seen = mutableSetOf<String>()
+  private val urlRe = Regex("""https?://[^\s<>"')\]]+""")
+  private fun remember(s: String) {
+    urlRe.findAll(s).forEach { seen += it.value.trimEnd('.', ',', ';') }
+  }
+
+  private val ctx = ToolContext(
+    root = Path.of(config.workDir).toRealPath(),
+    config = config,
+    seen = seen,
+    ask = { msgs ->
+      llm.request(
+        msgs,
+        emptyList(),
+        model = config.summaryModel.ifBlank { config.model },
+        think = false
+      ).content.orEmpty()
+    },
+  )
+
   private val tools = Tools(xdg).list
 
   private val store = Store(xdg.share / "sessions.db")
@@ -71,23 +91,24 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun removeChat(id: Long) = store.delete(id)
 
   fun prompt(input: String): String {
-      record(Msg.Text(Role.USER, input))
-      repeat(config.maxToolDepth) {
-          val reply = llm.request(history, tools.values.map { it.def })
-          val calls = reply.toolCalls
-          if (calls.isNullOrEmpty()) {
-              val text = reply.content.orEmpty()
-              if (text.isNotBlank()) {
-                  record(Msg.Text(Role.ASSISTANT, text, source = Source.MODEL))
-                  return text
-              }
-              record(Msg.Text(Role.USER, "SYSTEM: cannot return an empty string", source = Source.SYSTEM))
-              return@repeat
-          }
-          record(Msg.ToolCalls(calls, reply.content))
-          for (call in calls) record(runTool(call))
+    remember(input)
+    record(Msg.Text(Role.USER, input))
+    repeat(config.maxToolDepth) {
+      val reply = llm.request(history, tools.values.map { it.def })
+      val calls = reply.toolCalls
+      if (calls.isNullOrEmpty()) {
+        val text = reply.content.orEmpty()
+        if (text.isNotBlank()) {
+          record(Msg.Text(Role.ASSISTANT, text, source = Source.MODEL))
+          return text
+        }
+        record(Msg.Text(Role.USER, "SYSTEM: cannot return an empty string", source = Source.SYSTEM))
+        return@repeat
       }
-      return "step limit reached"
+      record(Msg.ToolCalls(calls, reply.content))
+      for (call in calls) record(runTool(call))
+    }
+    return "step limit reached"
   }
 
   private fun runTool(call: ToolCall): Msg.ToolResult {
@@ -99,6 +120,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
     }.getOrElse { "error: ${it.message}" }
     val ok = !result.startsWith("error:")
     spinner.stop(ok = ok)
+    if (ok) remember(result)
     return Msg.ToolResult(call.id, result, ok = ok, source = tool.source)
   }
 

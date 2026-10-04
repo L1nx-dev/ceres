@@ -6,13 +6,19 @@ import ceres.main.Config
 import java.util.concurrent.TimeUnit
 import ceres.main.Source
 import ceres.main.Xdg
+import ceres.main.Msg
 import java.nio.file.Path
 import kotlin.io.path.div
 import java.nio.file.StandardCopyOption
 
 data class ToolDefinition(val name: String, val description: String, val parameters: JsonObject)
 
-class ToolContext(val root: Path) {
+class ToolContext(
+  val root: Path,
+  val config: Config,
+  val seen: MutableSet<String>,
+  val ask: (List<Msg>) -> String
+) {
   fun resolve(rel: String): Path {
     val p = root.resolve(rel).normalize()
     require(p.startsWith(root)) { "path outside workspace" }
@@ -59,6 +65,7 @@ class ToolContext(val root: Path) {
 
 interface Tool {
   val source: Source get() = Source.TOOL
+  val icon: String? get() = null
   val def: ToolDefinition
   fun run(args: JsonObject, ctx: ToolContext): String
 }
@@ -73,6 +80,7 @@ class Tools(xdg: Xdg) {
     WebSearch(),
     RemoveFile(),
     Shell(),
+    WebFetch(),
     Remember(xdg.config / "SKETCHPAD.md"),
   ).associateBy { it.def.name }
 }
