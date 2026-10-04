@@ -81,6 +81,8 @@ class Tools(xdg: Xdg) {
     RemoveFile(),
     Shell(),
     WebFetch(),
+    Recall(xdg.memory, xdg.config / "SKETCHPAD.md"),
+    LoadMemory(xdg.memory),
     Remember(xdg.config / "SKETCHPAD.md"),
   ).associateBy { it.def.name }
 }

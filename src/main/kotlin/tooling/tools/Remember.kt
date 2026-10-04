@@ -22,6 +22,7 @@ object Sketchpad {
 }
 
 class Remember(private val file: Path) : Tool {
+  override val icon get() = "📝"
   override val def = ToolDefinition(
     name = "remember",
     description = "Save a note about yourself or the user, their projects, or a decision, to be sorted into long-term memory later. " +

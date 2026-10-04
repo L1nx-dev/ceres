@@ -15,7 +15,8 @@ class Chat {
   private val xdg = Xdg()
   private val config = Config(xdg)
   private val agent = Agent(config, xdg)
-  private val commands = Commands(agent)
+  private val dreamer = Dreamer(config, xdg)
+  private val commands = Commands(agent, dreamer)
 
   fun start() {
 

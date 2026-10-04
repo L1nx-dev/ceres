@@ -3,11 +3,20 @@ package ceres.cli
 import java.io.PrintStream
 import ceres.*
 import ceres.cli.Ansi
+import org.jline.terminal.*
+
+object Term {
+  private val terminal by lazy {
+    runCatching { TerminalBuilder.builder().system(true).build() }.getOrNull()
+  }
+  val width: Int get() = terminal?.width?.takeIf { it > 0 } ?: 80
+}
 
 class Spinner(
-  private val label: String,
+  label: String,
   private val out: PrintStream = System.out,
 ) {
+  private val label = label.take(Term.width - 4)
   private val frames = "◜◝◞◟"
   @Volatile private var running = false
   private var thread: Thread? = null
@@ -25,11 +34,15 @@ class Spinner(
     return this
   }
 
-  fun stop(ok: Boolean = true) {
+  fun stop(ok: Boolean = true, icon: String? = null) {
     running = false
     thread?.interrupt()
     thread?.join()
-    val mark = if (ok) "${Ansi.GREEN}✔" else "${Ansi.RED}✘"
+    val mark = when {
+      !ok -> "${Ansi.RED}✘"
+      icon != null -> icon
+      else -> "${Ansi.GREEN}✔"
+    }
     out.println("${Ansi.RESET}\r\u001B[K${mark}${Ansi.RESET}${Ansi.DIM} $label")
   }
 }

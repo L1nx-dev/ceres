@@ -3,7 +3,7 @@ package ceres.main
 import ceres.cli.*
 import org.jline.utils.InfoCmp
 
-class Commands(private val agent: Agent) {
+class Commands(private val agent: Agent, private val dreamer: Dreamer) {
   private val nameRe = Regex("[A-Za-z][A-Za-z0-9_.-]{0,31}")
 
   fun run(line: String): String {
@@ -11,6 +11,7 @@ class Commands(private val agent: Agent) {
     return when (p[0]) {
       "/chat" -> chat(p.drop(1))
       "/help" -> help(p.drop(1))
+      "/dream" -> dreamer.dream()
       else -> "unknown command: ${p[0]}. use /help to list all available commands."
     }
   }

@@ -119,7 +119,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
       tool.run(Json.parseToJsonElement(call.arguments).jsonObject, ctx)
     }.getOrElse { "error: ${it.message}" }
     val ok = !result.startsWith("error:")
-    spinner.stop(ok = ok)
+    spinner.stop(ok = ok, icon = tool.icon)
     if (ok) remember(result)
     return Msg.ToolResult(call.id, result, ok = ok, source = tool.source)
   }
