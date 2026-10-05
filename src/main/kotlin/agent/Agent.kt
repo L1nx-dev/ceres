@@ -17,6 +17,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
     urlRe.findAll(s).forEach { seen += it.value.trimEnd('.', ',', ';') }
   }
 
+
   private val ctx = ToolContext(
     root = Path.of(config.workDir).toRealPath(),
     config = config,
@@ -32,6 +33,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
   )
 
   private val tools = Tools(xdg).list
+  var cancel: Cancel? = null
 
   private val store = Store(xdg.share / "sessions.db")
   private var sid: Long = 0
@@ -44,16 +46,13 @@ class Agent(val config: Config, private val xdg: Xdg) {
     sid = id
     history = store.load(id)
     if (history.isEmpty()) seed()
-    println("m2") //debug
     reloadMemory()
-    println("m3") //debug
   }
 
   private fun withIndex(h: List<Msg>): List<Msg> {
     val first = h.firstOrNull() as? Msg.Text ?: return h
     if (first.role != Role.SYSTEM) return h
     val idx = "# MEMORY\nFiles you can open with load_memory, or search with recall:\n$memoryIndex"
-    println("m1") //debug
     return listOf(first.copy(content = first.content + "\n\n" + idx)) + h.drop(1)
   }
 
@@ -104,44 +103,64 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun renameChat(id: Long, name: String) = store.rename(id, name)
   fun removeChat(id: Long) = store.delete(id)
 
-  fun prompt(input: String): String {
+  fun prompt(
+    input: String,
+    cancel: Cancel,
+    emit: (Event) -> Unit
+  ) {
+    ctx.cancel = cancel
     remember(input)
     record(Msg.Text(Role.USER, input))
+    val defs = tools.values.map { it.def }
     repeat(config.maxToolDepth) {
-      val reply = llm.request(history, tools.values.map { it.def })
+      val reply = try {
+        llm.stream(withIndex(history), defs, cancel) { emit(Event.Delta(it)) }
+      } catch (e: Exception) {
+        emit(if (cancel.cancelled) Event.Cancelled else Event.Error(e.message ?: "request failed"))
+        return
+      }
+      if (cancel.cancelled) { emit(Event.Cancelled); return }
+
       val calls = reply.toolCalls
       if (calls.isNullOrEmpty()) {
         val text = reply.content.orEmpty()
         if (text.isNotBlank()) {
           record(Msg.Text(Role.ASSISTANT, text, source = Source.MODEL))
-          return text
+          emit(Event.Done(text))
+          return
         }
         record(Msg.Text(Role.USER, "SYSTEM: cannot return an empty string", source = Source.SYSTEM))
         return@repeat
       }
       record(Msg.ToolCalls(calls, reply.content))
-      for (call in calls) record(runTool(call))
+      for (call in calls) {
+        record(
+          if (cancel.cancelled) Msg.ToolResult(call.id, "error: cancelled", ok = false)
+          else runTool(call, emit)
+        )
+      }
+      if (cancel.cancelled) { emit(Event.Cancelled); return }
     }
-    return "step limit reached"
-  }
-
-  private fun runTool(call: ToolCall): Msg.ToolResult {
-    val tool = tools[call.name]
-      ?: return Msg.ToolResult(call.id, "error: unknown tool ${call.name}", ok = false)
-    val spinner = Spinner(label(call)).start()
-    val result = runCatching {
-      tool.run(Json.parseToJsonElement(call.arguments).jsonObject, ctx)
-    }.getOrElse { "error: ${it.message}" }
-    val ok = !result.startsWith("error:")
-    spinner.stop(ok = ok, icon = tool.icon)
-    if (ok) remember(result)
-    return Msg.ToolResult(call.id, result, ok = ok, source = tool.source)
+    emit(Event.Error("step limit reached"))
   }
 
   private fun label(call: ToolCall): String {
     val first = runCatching {
-        Json.parseToJsonElement(call.arguments).jsonObject.values.firstOrNull()?.jsonPrimitive?.contentOrNull
-      }.getOrNull()
+      Json.parseToJsonElement(call.arguments).jsonObject.values.firstOrNull()?.jsonPrimitive?.contentOrNull
+    }.getOrNull()
     return if (first == null) call.name else "${call.name}: ${first.replace(Regex("\\s+"), " ").take(120)}"
+  }
+
+  private fun runTool(call: ToolCall, emit: (Event) -> Unit): Msg.ToolResult {
+    val tool = tools[call.name]
+      ?: return Msg.ToolResult(call.id, "error: unknown tool ${call.name}", ok = false)
+    emit(Event.ToolStart(call.id, label(call), tool.icon ?: ""))
+    val result = runCatching {
+      tool.run(Json.parseToJsonElement(call.arguments).jsonObject, ctx)
+    }.getOrElse { "error: ${it.message}" }
+    val ok = !result.startsWith("error:")
+    emit(Event.ToolEnd(call.id, ok, result))
+    if (ok) remember(result)
+    return Msg.ToolResult(call.id, result, ok = ok, source = tool.source)
   }
 }

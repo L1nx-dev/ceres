@@ -2,6 +2,7 @@ package ceres.tools
 
 import kotlinx.serialization.json.JsonObject
 import java.nio.file.*
+import ceres.main.Cancel
 import ceres.main.Config
 import java.util.concurrent.TimeUnit
 import ceres.main.Source
@@ -19,6 +20,8 @@ class ToolContext(
   val seen: MutableSet<String>,
   val ask: (List<Msg>) -> String
 ) {
+  var cancel: Cancel? = null
+
   fun resolve(rel: String): Path {
     val p = root.resolve(rel).normalize()
     require(p.startsWith(root)) { "path outside workspace" }
@@ -50,16 +53,22 @@ class ToolContext(
       "--",
     )
     val p = ProcessBuilder(bwrap + argv).redirectErrorStream(true).start()
-    val out = java.util.concurrent.CompletableFuture.supplyAsync { p.inputStream.readAllBytes() }
-    p.outputStream.use { if (stdin != null) it.write(stdin.toByteArray()) }
+    cancel?.setHook { p.destroyForcibly() }
+    try {
+      val out = java.util.concurrent.CompletableFuture.supplyAsync { p.inputStream.readAllBytes() }
+      p.outputStream.use { if (stdin != null) it.write(stdin.toByteArray()) }
 
-    if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
-      p.destroyForcibly()
-      return "error: timeout after ${timeoutSec}s"
+      if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
+        p.destroyForcibly()
+        return "error: timeout after ${timeoutSec}s"
+      }
+      val text = out.get().decodeToString().take(16_000)
+      if (cancel?.cancelled == true) return "error: cancelled"
+      val code = p.exitValue()
+      return if (code == 0) text else "error: exit $code\n$text"
+    } finally {
+      cancel?.setHook(null)
     }
-    val text = out.get().decodeToString().take(16_000)
-    val code = p.exitValue()
-    return if (code == 0) text else "error: exit $code\n$text"
   }
 }
 

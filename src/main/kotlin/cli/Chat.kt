@@ -10,6 +10,7 @@ import kotlin.io.path.div
 import org.jline.reader.impl.DefaultHighlighter
 import org.jline.utils.*
 import org.jline.reader.impl.LineReaderImpl
+import org.jline.terminal.Terminal
 
 class Chat {
   private val xdg = Xdg()
@@ -17,6 +18,35 @@ class Chat {
   private val agent = Agent(config, xdg)
   private val dreamer = Dreamer(config, xdg)
   private val commands = Commands(agent, dreamer)
+  private var spinner: Spinner? = null
+  private var icon = ""
+  private var streaming = false
+
+  private fun render(e: Event) {
+    when (e) {
+      is Event.Delta -> {
+        if (!streaming) { print("${Ansi.RESET}⚳ "); streaming = true }
+        print(e.text); System.out.flush()
+      }
+      is Event.ToolStart -> {
+        if (streaming) { println(); streaming = false }
+        icon = e.icon
+        spinner = Spinner(e.label).start()
+      }
+      is Event.ToolEnd -> { spinner?.stop(ok = e.ok, icon = icon); spinner = null }
+      is Event.Done -> { if (streaming) println(); streaming = false }
+      is Event.Error -> {
+        spinner?.stop(ok = false, icon = icon); spinner = null
+        if (streaming) println(); streaming = false
+        println("error: ${e.message}")
+      }
+      Event.Cancelled -> {
+        spinner?.stop(ok = false, icon = icon); spinner = null
+        if (streaming) println(); streaming = false
+        println("[cancelled]")
+      }
+    }
+  }
 
   fun start() {
 
@@ -41,7 +71,7 @@ class Chat {
           val base = AttributedStyle.DEFAULT.foreground(if (cmd) AttributedStyle.MAGENTA else AttributedStyle.CYAN)
           if (!cmd) return AttributedString(buffer, base)
 
-          val tokens = tokenRe.findAll(buffer).map { it.value }.toList()
+            val tokens = tokenRe.findAll(buffer).map { it.value }.toList()
           val words = tokens.count { it.isNotBlank() }
           val sb = AttributedStringBuilder()
           var n = 0
@@ -72,9 +102,14 @@ class Chat {
           terminal.flush()
         }
         input.startsWith("/") -> println(commands.run(input))
-        else -> println("${Ansi.RESET}⚳ " + agent.prompt(input))
+        else -> {
+          val cancel = Cancel()
+          val prev = terminal.handle(Terminal.Signal.INT) { cancel.cancel() }
+          try { agent.prompt(input, cancel, ::render) }
+          finally { terminal.handle(Terminal.Signal.INT, prev) }
+        }
       }
-    terminal.close()
+      terminal.close()
     }
   }
 }
