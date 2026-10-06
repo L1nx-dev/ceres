@@ -4,6 +4,7 @@ import kotlinx.serialization.json.*
 import java.nio.file.*
 
 class ReadFile : Tool {
+  override val icon get() = "📰"
   override val def = ToolDefinition(
     name = "read",
     description = "Read a text file from the workspace.",

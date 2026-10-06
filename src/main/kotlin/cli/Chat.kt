@@ -19,7 +19,7 @@ class Chat {
   private val dreamer = Dreamer(config, xdg)
   private val commands = Commands(agent, dreamer)
   private var spinner: Spinner? = null
-  private var icon = ""
+  private var icon = "✔"
   private var streaming = false
 
   private fun render(e: Event) {

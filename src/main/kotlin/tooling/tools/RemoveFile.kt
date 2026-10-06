@@ -4,6 +4,7 @@ import kotlinx.serialization.json.*
 import java.nio.file.*
 
 class RemoveFile : Tool {
+  override val icon get() = "🗑️"
   override val def = ToolDefinition(
     name = "remove",
     description = "Removes the specified file or directory; be careful.",

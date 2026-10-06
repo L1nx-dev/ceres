@@ -4,6 +4,7 @@ import kotlinx.serialization.json.*
 import java.nio.file.*
 
 class MakeDir : Tool {
+  override val icon get() = "📂"
   override val def = ToolDefinition(
     name = "mkdir",
     description = "Create a directory (and missing parents).",

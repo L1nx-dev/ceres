@@ -103,7 +103,15 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun renameChat(id: Long, name: String) = store.rename(id, name)
   fun removeChat(id: Long) = store.delete(id)
 
-  fun prompt(
+  private val running = java.util.concurrent.atomic.AtomicBoolean(false)
+  val busy: Boolean get() = running.get()
+
+  fun prompt(input: String, cancel: Cancel, emit: (Event) -> Unit) {
+    check(running.compareAndSet(false, true)) { "run already active" }
+    try { runLoop(input, cancel, emit) } finally { running.set(false) }
+  }
+
+  fun runLoop(
     input: String,
     cancel: Cancel,
     emit: (Event) -> Unit

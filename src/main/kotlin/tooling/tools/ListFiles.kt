@@ -5,6 +5,7 @@ import java.nio.file.attribute.*
 import java.nio.file.*
 
 class ListFiles : Tool {
+  override val icon get() = "📂"
   override val def = ToolDefinition(
     name = "ls",
     description = "List files in a directory.",

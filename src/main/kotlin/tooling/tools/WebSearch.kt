@@ -11,6 +11,7 @@ import ceres.main.*
 private val config = Config()
 
 class WebSearch : Tool {
+override val icon get() = "🌐"
 override val source = Source.WEB
   override val def = ToolDefinition(
     name = "web_search",

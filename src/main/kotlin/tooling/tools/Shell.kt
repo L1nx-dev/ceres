@@ -3,6 +3,7 @@ package ceres.tools
 import kotlinx.serialization.json.*
 
 class Shell : Tool {
+  override val icon get() = "🦪"
   override val def = ToolDefinition(
     name = "shell",
     description = "Run a shell command in a sandbox. Do not use for web scraping.",

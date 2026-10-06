@@ -12,6 +12,7 @@ import ceres.main.*
 import java.time.Duration
 
 class WebFetch : Tool {
+  override val icon get() = "🌐"
   override val source = Source.WEB
   override val def = ToolDefinition(
     name = "web_fetch",
