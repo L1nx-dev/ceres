@@ -32,6 +32,10 @@ class Config(xdg: Xdg = Xdg()) {
   val searXNG         = Entry("searXNG", "http://127.0.0.1:8888")     { it.jsonPrimitive.content }.value
   val summaryModel = Entry("summaryModel", "") { it.jsonPrimitive.content }.value
 
+  val listen = Entry("listen", "127.0.0.1") { it.jsonPrimitive.content }.value
+  val port   = Entry("port", 4000)          { it.jsonPrimitive.int }.value
+  val token  = Entry("token", "")           { it.jsonPrimitive.content }.value
+
 
   // template
   // val someString = Entry("some_string", "default") { it.jsonPrimitive.content }.value
