@@ -92,6 +92,7 @@ class Tools(xdg: Xdg) {
     WebFetch(),
     Recall(xdg.memory, xdg.config / "SKETCHPAD.md"),
     LoadMemory(xdg.memory),
+    LoadSkill(xdg.skills),
     Remember(xdg.config / "SKETCHPAD.md"),
   ).associateBy { it.def.name }
 }

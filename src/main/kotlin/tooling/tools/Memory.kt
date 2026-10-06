@@ -38,7 +38,8 @@ class Recall(private val dir: Path, private val pad: Path) : Tool {
     val out = hits.map { (p, text, _) ->
       val lines = text.lines()
       val snippet = lines.drop(1).filter { l -> words.any { it in l.lowercase() } }.take(3)
-      "${dir.relativize(p)} — ${lines.first()}\n" + snippet.joinToString("\n") { "  $it" }
+      "${dir.relativize(p).toString().removeSuffix(".md")} — ${lines.first()}\n" +
+        snippet.joinToString("\n") { "  $it" }
     }.toMutableList()
 
     Sketchpad.read(pad).filter { e -> words.any { it in e.text.lowercase() } }.take(3)
@@ -49,7 +50,6 @@ class Recall(private val dir: Path, private val pad: Path) : Tool {
 }
 
 class LoadMemory(private val dir: Path) : Tool {
-  // override val icon get() = "📖"
   override val icon get() = "🧠"
   override val def = ToolDefinition(
     name = "load_memory",
@@ -59,7 +59,7 @@ class LoadMemory(private val dir: Path) : Tool {
     parameters = buildJsonObject {
       put("type", "object")
       putJsonObject("properties") {
-        putJsonObject("name") { put("type", "string"); put("description", "path, e.g. memory.md") }
+        putJsonObject("name") { put("type", "string"); put("description", "path, e.g. example.md") }
       }
       putJsonArray("required") { add("name") }
     },
@@ -67,7 +67,7 @@ class LoadMemory(private val dir: Path) : Tool {
 
   override fun run(args: JsonObject, ctx: ToolContext): String {
     val name = args["name"]?.jsonPrimitive?.contentOrNull ?: return "error: missing 'name'"
-    val p = dir.resolve(name).normalize()
+    val p = dir.resolve(name + ".md").normalize()
     if (!p.startsWith(dir) || !Files.isRegularFile(p)) return "error: no such memory file: $name"
     return Files.readString(p).take(16_000)
   }

@@ -13,7 +13,7 @@ class SaveMemory : Tool {
     parameters = buildJsonObject {
       put("type", "object")
       putJsonObject("properties") {
-        putJsonObject("path") { put("type", "string"); put("description", "relative file path, e.g. nixos.md") }
+        putJsonObject("path") { put("type", "string"); put("description", "relative file path, e.g. example") }
         putJsonObject("old_str") { put("type", "string"); put("description", "exact text to replace; empty to append") }
         putJsonObject("new_str") { put("type", "string"); put("description", "replacement or appended text") }
         putJsonObject("description") { put("type", "string"); put("description", "one-line summary of the file") }
@@ -29,7 +29,7 @@ class SaveMemory : Tool {
     val desc = args["description"]?.jsonPrimitive?.contentOrNull
       ?.replace(Regex("\\s+"), " ")?.trim()?.takeIf { it.isNotEmpty() }
 
-    val file = ctx.resolve(rel)
+    val file = ctx.resolve(rel + ".md")
     val exists = Files.exists(file)
     if (!exists && desc == null) return "error: description required for new file"
 
