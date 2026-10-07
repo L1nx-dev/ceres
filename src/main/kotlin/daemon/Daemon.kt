@@ -7,6 +7,9 @@ import java.net.InetSocketAddress
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
+import kotlin.system.exitProcess
+import kotlin.io.path.*
 
 class Daemon(
   private val config: Config,
@@ -18,6 +21,11 @@ class Daemon(
     require(config.token.isNotBlank()) { "token mustn't be empty" }
     http.executor = Executors.newCachedThreadPool()
 
+    route("/shutdown") { ex ->
+      reply(ex, 202)
+      thread { while (hub.busy) Thread.sleep(200); exitProcess(0) }
+    }
+    route("/status") { reply(it, 200, "ok") }
     route("/events") { ex ->
       val last = ex.requestHeaders.getFirst("Last-Event-ID")?.toLongOrNull() ?: 0L
       ex.responseHeaders.add("Content-Type", "text/event-stream")
@@ -75,4 +83,20 @@ class Daemon(
     val h = requestHeaders.getFirst("Authorization") ?: ""
     return MessageDigest.isEqual(h.toByteArray(), "Bearer ${config.token}".toByteArray())
   }
+}  
+
+
+
+fun runDaemon(config: Config, xdg: Xdg) {
+  val agent = Agent(config, xdg)
+  val hub = Hub(agent)
+  val daemon = Daemon(config, hub, Commands(agent, Dreamer(config, xdg)))
+  Runtime.getRuntime().addShutdownHook(Thread {
+    hub.cancel()
+    repeat(30) { if (hub.busy) Thread.sleep(100) }
+    daemon.stop()
+  })
+  daemon.start()
+  println("listening on ${config.listen}:${config.port}")
+  Thread.currentThread().join()
 }

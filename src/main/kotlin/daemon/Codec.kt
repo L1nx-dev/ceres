@@ -13,3 +13,17 @@ fun encode(e: Event): String = buildJsonObject {
     Event.Cancelled    -> put("type", "cancelled")
   }
 }.toString()
+
+fun decode(s: String): Event {
+  val o = Json.parseToJsonElement(s).jsonObject
+  fun str(k: String) = o.getValue(k).jsonPrimitive.content
+  return when (str("type")) {
+    "delta"      -> Event.Delta(str("text"))
+    "tool_start" -> Event.ToolStart(str("id"), str("label"), str("icon"))
+    "tool_end"   -> Event.ToolEnd(str("id"), o.getValue("ok").jsonPrimitive.boolean, str("output"))
+    "done"       -> Event.Done(str("text"))
+    "error"      -> Event.Error(str("message"))
+    "cancelled"  -> Event.Cancelled
+    else         -> Event.Error("unknown event: ${str("type")}")
+  }
+}

@@ -12,15 +12,47 @@ import org.jline.utils.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.terminal.Terminal
 
-class Chat {
-  private val xdg = Xdg()
-  private val config = Config(xdg)
-  private val agent = Agent(config, xdg)
-  private val dreamer = Dreamer(config, xdg)
-  private val commands = Commands(agent, dreamer)
+class Chat( 
+  val xdg: Xdg,
+  val config: Config
+) {
   private var spinner: Spinner? = null
   private var icon = "✔"
   private var streaming = false
+  private val http = java.net.http.HttpClient.newHttpClient()
+  private val httpAddress = "http://${config.listen}:${config.port}"
+  @Volatile private var lastId = -1L
+  @Volatile private var done = java.util.concurrent.CountDownLatch(1)
+
+  private fun req(path: String) =
+    java.net.http.HttpRequest.newBuilder(java.net.URI.create(httpAddress + path))
+      .header("Authorization", "Bearer ${config.token}")
+
+  private fun listen() = kotlin.concurrent.thread(isDaemon = true, name = "events") {
+    while (true) {
+      try {
+        val res = http.send(
+          req("/events").header("Last-Event-ID", lastId.toString()).GET().build(),
+          java.net.http.HttpResponse.BodyHandlers.ofLines())
+        res.body().forEach { line ->
+          when {
+            line.startsWith("id:") -> lastId = line.substring(3).trim().toLong()
+            line.startsWith("data:") -> {
+              val e = decode(line.substring(5).trim())
+              render(e)
+              if (e is Event.Done || e is Event.Error || e === Event.Cancelled) done.countDown()
+            }
+          }
+        }
+      }
+      catch (e: Exception) {
+        System.err.println("events: $e")
+      } catch (t: Throwable) {
+        System.err.println("events thread died: $t"); throw t
+      }
+      Thread.sleep(1000)
+    }
+  }
 
   private fun render(e: Event) {
     when (e) {
@@ -87,6 +119,8 @@ class Chat {
       .variable(LineReader.HISTORY_FILE, xdg.share / "history")
       .build()
 
+    val events = listen()
+
     while (true) {
       val input = try {
         reader.readLine("${Ansi.CYAN}>=> ${Ansi.RESET}")
@@ -101,15 +135,34 @@ class Chat {
           terminal.puts(InfoCmp.Capability.clear_screen)
           terminal.flush()
         }
-        input.startsWith("/") -> println(commands.run(input))
+        input.startsWith("/") -> {
+          val r = http.send(
+            req("/command").timeout(java.time.Duration.ofMinutes(10))
+              .POST(java.net.http.HttpRequest.BodyPublishers.ofString(input)).build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString())
+          println(r.body())
+        }
         else -> {
-          val cancel = Cancel()
-          val prev = terminal.handle(Terminal.Signal.INT) { cancel.cancel() }
-          try { agent.prompt(input, cancel, ::render) }
-          finally { terminal.handle(Terminal.Signal.INT, prev) }
+          done = java.util.concurrent.CountDownLatch(1)
+          val prev = terminal.handle(Terminal.Signal.INT) {
+            http.sendAsync(
+              req("/cancel").POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),
+              java.net.http.HttpResponse.BodyHandlers.discarding())
+          }
+          try {
+            val r = http.send(
+              req("/prompt").POST(java.net.http.HttpRequest.BodyPublishers.ofString(input)).build(),
+              java.net.http.HttpResponse.BodyHandlers.ofString())
+              if (r.statusCode() == 202) {
+                while (!done.await(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                  if (!events.isAlive) { println("error: lost connection to daemon"); break }
+                }
+              }
+            else println("error: HTTP ${r.statusCode()} ${r.body()}")
+          } finally { terminal.handle(Terminal.Signal.INT, prev) }
         }
       }
-      terminal.close()
     }
+    terminal.close()
   }
 }

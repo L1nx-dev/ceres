@@ -38,7 +38,7 @@ class Hub(private val agent: Agent) {
 
   fun subscribe(lastId: Long): LinkedBlockingQueue<Item> = synchronized(lock) {
     val q = LinkedBlockingQueue<Item>()
-    buffer.filter { it.id > lastId }.forEach { q.offer(it) }
+    buffer.filter { lastId >= 0 && it.id > lastId }.forEach { q.offer(it) }
     subs += q
     q
   }
