@@ -1,5 +1,6 @@
-package ceres.main
+package ceres.system
 
+import ceres.main.*
 import kotlinx.serialization.json.*
 import kotlin.io.path.*
 
@@ -30,11 +31,14 @@ class Config(xdg: Xdg = Xdg()) {
   val maxToolDepth    = Entry("maxToolDepth", 30)                     { it.jsonPrimitive.int }.value
 
   val searXNG         = Entry("searXNG", "http://127.0.0.1:8888")     { it.jsonPrimitive.content }.value
-  val summaryModel = Entry("summaryModel", "") { it.jsonPrimitive.content }.value
+  val summaryModel    = Entry("summaryModel", "")                     { it.jsonPrimitive.content }.value
 
-  val listen = Entry("listen", "127.0.0.1") { it.jsonPrimitive.content }.value
-  val port   = Entry("port", 4000)          { it.jsonPrimitive.int }.value
-  val token  = Entry("token", "")           { it.jsonPrimitive.content }.value
+  val listen          = Entry("listen", "127.0.0.1")                  { it.jsonPrimitive.content }.value
+  val port            = Entry("port", 4000)                           { it.jsonPrimitive.int }.value
+  val token           = Entry("token", "")                            { it.jsonPrimitive.content }.value
+
+// gui
+  val guiConnection   = Entry("guiConnection", "local")               { it.jsonPrimitive.content }.value // local/<some better name for not local>/tor 
 
 
   // template

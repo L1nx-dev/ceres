@@ -1,4 +1,4 @@
-package ceres.main
+package ceres.core
 
 sealed class Event {
   data class Delta(val text: String) : Event()

@@ -9,6 +9,7 @@ import java.net.InetAddress
 import java.net.URI
 import java.net.http.*
 import ceres.main.*
+import ceres.system.*
 import java.time.Duration
 
 class WebFetch : Tool {

@@ -7,6 +7,8 @@ import java.sql.DriverManager
 import java.sql.Statement
 import java.time.Instant
 import kotlin.io.path.createDirectories
+import ceres.system.*
+import ceres.core.*
 
 data class Hit(val sessionId: Long, val messageId: Long, val snippet: String)
 

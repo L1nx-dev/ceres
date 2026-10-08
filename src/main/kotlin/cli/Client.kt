@@ -1,9 +1,11 @@
-package ceres.main
+package ceres.cli
 
 import kotlin.io.path.*
-import kotlin.system.*
+import ceres.system.*
+import ceres.core.*
 import kotlin.concurrent.thread
 import java.util.stream.Stream
+import kotlin.system.exitProcess
 
 class Client(private val config: Config, private val xdg: Xdg) {
   private val http = java.net.http.HttpClient.newHttpClient()

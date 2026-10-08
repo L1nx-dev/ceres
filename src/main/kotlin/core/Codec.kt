@@ -1,4 +1,4 @@
-package ceres.main
+package ceres.core
 
 import kotlinx.serialization.json.*
 

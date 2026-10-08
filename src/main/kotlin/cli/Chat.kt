@@ -1,6 +1,8 @@
 package ceres.cli
 
 import ceres.main.*
+import ceres.system.*
+import ceres.core.*
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReader
 import org.jline.reader.LineReaderBuilder

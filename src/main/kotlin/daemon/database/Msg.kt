@@ -1,4 +1,7 @@
 package ceres.main
+
+import ceres.system.*
+import ceres.core.*
  
 enum class Role(val wire: String) {
   SYSTEM("system"), USER("user"), ASSISTANT("assistant")
