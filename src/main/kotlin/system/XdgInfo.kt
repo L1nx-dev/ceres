@@ -2,11 +2,11 @@ package ceres.system
 
 import kotlin.io.path.*
 import java.nio.file.Files
-import ceres.main.*
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import kotlinx.serialization.json.*
 
-class Xdg {
+class Xdg(seed: Boolean = true) {
   val home = Path(System.getProperty("user.home"))
 
   val config =
@@ -34,7 +34,7 @@ class Xdg {
 
   init {
     listOf(config, share, skills, memory).forEach { it.createDirectories() }
-    defaultResources.forEach { (name, dir) -> copyResourceIfMissing(name, dir) }
+    if (seed) defaultResources.forEach { (name, dir) -> copyResourceIfMissing(name, dir) }
   }
 
   private fun copyResourceIfMissing(resourceName: String, targetDir: Path) {
@@ -46,3 +46,6 @@ class Xdg {
           ?: error("missing resource: /$resourceName")
   }
 }
+
+fun Config(xdg: Xdg): Config =
+  Config(JsonSource.parse(runCatching { (xdg.config / "config.json").readText() }.getOrDefault("")))

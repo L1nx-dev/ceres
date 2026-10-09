@@ -1,49 +1,61 @@
 package ceres.system
 
-import ceres.main.*
 import kotlinx.serialization.json.*
-import kotlin.io.path.*
 
-class Config(xdg: Xdg = Xdg()) {
+interface ConfigSource {
+  fun string(key: String): String?
+  fun long(key: String): Long?
+  fun bool(key: String): Boolean?
+  fun strings(key: String): List<String>?
+}
 
-  private val root: JsonObject =
-    runCatching {
-      Json.parseToJsonElement((xdg.config / "config.json").readText()).jsonObject
-    }.getOrDefault(JsonObject(emptyMap()))
+class JsonSource(private val root: JsonObject) : ConfigSource {
+  private fun prim(k: String) = root[k] as? JsonPrimitive
+  override fun string(key: String) = prim(key)?.contentOrNull
+  override fun long(key: String) = prim(key)?.longOrNull
+  override fun bool(key: String) = prim(key)?.booleanOrNull
+  override fun strings(key: String) =
+    (root[key] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
 
-  private inner class Entry<T>(
-    key: String,
-    default: T,
-    read: (JsonElement) -> T,
-  ) {
-
-    val value: T = root[key]
-      ?.let { runCatching { read(it) }.getOrNull() }
-      ?: default
+  companion object {
+    fun parse(text: String) = JsonSource(
+      runCatching { Json.parseToJsonElement(text).jsonObject }.getOrDefault(JsonObject(emptyMap()))
+    )
   }
+}
 
-  val baseUrl         = Entry("baseUrl", "http://localhost:8080")     { it.jsonPrimitive.content }.value
-  val apiKey          = Entry("apiKey", "")                           { it.jsonPrimitive.content }.value
-  val model           = Entry("model", "default")                     { it.jsonPrimitive.content }.value
-  val timeout         = Entry("timeout", 180)                         { it.jsonPrimitive.long }.value
+/** For Android: build from DataStore/SharedPreferences values. */
+class MapSource(private val m: Map<String, Any?>) : ConfigSource {
+  override fun string(key: String) = m[key]?.toString()
+  override fun long(key: String) = (m[key] as? Number)?.toLong() ?: m[key]?.toString()?.toLongOrNull()
+  override fun bool(key: String) = m[key] as? Boolean ?: m[key]?.toString()?.toBooleanStrictOrNull()
+  override fun strings(key: String) = (m[key] as? List<*>)?.map { it.toString() }
+}
 
-  val workDir         = Entry("workDir", "")                          { it.jsonPrimitive.content }.value
-  val maxToolDepth    = Entry("maxToolDepth", 30)                     { it.jsonPrimitive.int }.value
+class Config(private val src: ConfigSource) {
+  private fun str(k: String, d: String) = src.string(k) ?: d
+  private fun lng(k: String, d: Long) = src.long(k) ?: d
+  private fun int(k: String, d: Int) = src.long(k)?.toInt() ?: d
+  private fun flag(k: String, d: Boolean) = src.bool(k) ?: d
+  private fun list(k: String, d: List<String> = emptyList()) = src.strings(k) ?: d
 
-  val searXNG         = Entry("searXNG", "http://127.0.0.1:8888")     { it.jsonPrimitive.content }.value
-  val summaryModel    = Entry("summaryModel", "")                     { it.jsonPrimitive.content }.value
+  val baseUrl       = str("baseUrl", "http://localhost:8080")
+  val apiKey        = str("apiKey", "")
+  val model         = str("model", "default")
+  val timeout       = lng("timeout", 180)
 
-  val listen          = Entry("listen", "127.0.0.1")                  { it.jsonPrimitive.content }.value
-  val port            = Entry("port", 4000)                           { it.jsonPrimitive.int }.value
-  val token           = Entry("token", "")                            { it.jsonPrimitive.content }.value
+  val workDir       = str("workDir", "")
+  val maxToolDepth  = int("maxToolDepth", 30)
 
-// gui
-  val guiConnection   = Entry("guiConnection", "local")               { it.jsonPrimitive.content }.value // local/<some better name for not local>/tor 
+  val searXNG       = str("searXNG", "http://127.0.0.1:8888")
+  val summaryModel  = str("summaryModel", "")
 
+  // daemon
+  val listen        = str("listen", "127.0.0.1")
+  val port          = int("port", 4000)
+  val token         = str("token", "")
 
-  // template
-  // val someString = Entry("some_string", "default") { it.jsonPrimitive.content }.value
-  // val someInt    = Entry("some_int", 0)            { it.jsonPrimitive.int }.value
-  // val someFlag   = Entry("some_flag", false)       { it.jsonPrimitive.boolean }.value
-  // val someList   = Entry("some_list", listOf<String>()) { it.jsonArray.map { e -> e.jsonPrimitive.content } }.value
+  // clients, where to connect (local | direct | tor)
+  val host          = str("host", "127.0.0.1")
+  val guiConnection = str("guiConnection", "local")
 }

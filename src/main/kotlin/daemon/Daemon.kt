@@ -68,8 +68,9 @@ class Daemon(
       try {
         if (!ex.authed()) reply(ex, 401)
         else handler(ex)
-      } catch (e: Exception) {
-        runCatching { reply(ex, 500, e.message ?: "error") }
+      } catch (t: Throwable) {
+        System.err.println("handler ${ex.requestURI}: $t"); System.err.println(t.stackTraceToString())
+        runCatching { reply(ex, 500, t.message ?: t.javaClass.simpleName) }
       } finally { ex.close() }
     }
   }

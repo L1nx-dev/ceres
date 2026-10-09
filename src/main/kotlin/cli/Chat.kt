@@ -1,6 +1,5 @@
 package ceres.cli
 
-import ceres.main.*
 import ceres.system.*
 import ceres.core.*
 import org.jline.reader.EndOfFileException
@@ -22,7 +21,7 @@ class Chat(
   private var icon = "✔"
   private var streaming = false
   private val http = java.net.http.HttpClient.newHttpClient()
-  private val httpAddress = "http://${config.listen}:${config.port}"
+  private val httpAddress = "http://${config.host}:${config.port}"
   @Volatile private var lastId = -1L
   @Volatile private var done = java.util.concurrent.CountDownLatch(1)
 

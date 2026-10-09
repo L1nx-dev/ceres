@@ -9,8 +9,6 @@ import java.time.*
 import ceres.main.*
 import ceres.system.*
 
-private val config = Config()
-
 class WebSearch : Tool {
 override val icon get() = "🌐"
 override val source = Source.WEB
@@ -48,7 +46,7 @@ override val source = Source.WEB
     val count = (args["count"]?.jsonPrimitive?.intOrNull ?: 5).coerceIn(1, 10)
     val lang = args["language"]?.jsonPrimitive?.contentOrNull
 
-    val base = config.searXNG.trim().trimEnd('/')
+    val base = ctx.config.searXNG.trim().trimEnd('/')
     if (base.isEmpty()) return "error: config.searXNG is not set"
 
     val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8)
