@@ -12,6 +12,8 @@ repositories {
 }
 
 dependencies {
+    // implementation("androidx.compose.material3:material3-android:1.4.0")
+    // implementation("androidx.compose.runtime:runtime-android:1.12.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
@@ -34,5 +36,5 @@ tasks.named<JavaExec>("run") {
 tasks.register<JavaExec>("runGui") {
     group = "application"
     classpath = sourceSets["main"].runtimeClasspath
-    mainClass = "ceres.gui.MainKt"
+    mainClass = "ceres.gui.desktop.MainKt"
 }
