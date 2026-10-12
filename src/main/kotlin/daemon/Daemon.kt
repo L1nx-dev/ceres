@@ -7,6 +7,7 @@ import java.net.InetSocketAddress
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.*
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.io.path.*
@@ -15,7 +16,8 @@ import ceres.core.*
 
 class Daemon(
   private val config: Config,
-  private val hub: Hub, private val commands: Commands
+  private val hub: Hub, private val commands: Commands,
+  private val agent: Agent
 ) {
   private val http = HttpServer.create(InetSocketAddress(config.listen, config.port), 0)
 
@@ -49,6 +51,13 @@ class Daemon(
     route("/prompt") { ex ->
       val text = ex.requestBody.readBytes().decodeToString()
       reply(ex, if (hub.start(text)) 202 else 409)
+    }
+
+    route("/history") { ex ->
+      ex.responseHeaders.add("Content-Type", "application/json")
+      reply(ex, 200, buildJsonArray {
+        for (l in agent.transcript()) addJsonObject { put("role", l.role); put("text", l.text) }
+      }.toString())
     }
 
     route("/cancel") { ex -> hub.cancel(); reply(ex, 204) }
@@ -93,7 +102,12 @@ class Daemon(
 fun runDaemon(config: Config, xdg: Xdg) {
   val agent = Agent(config, xdg)
   val hub = Hub(agent)
-  val daemon = Daemon(config, hub, Commands(agent, Dreamer(config, xdg)))
+  val daemon = Daemon(
+    config = config,
+    hub = hub,
+    commands = Commands(agent, Dreamer(config, xdg)),
+    agent = agent,
+  )
   Runtime.getRuntime().addShutdownHook(Thread {
     hub.cancel()
     repeat(30) { if (hub.busy) Thread.sleep(100) }

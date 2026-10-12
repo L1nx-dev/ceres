@@ -134,7 +134,7 @@ class Store(path: Path) : AutoCloseable {
   }
 
   @Synchronized
-  fun sessions(current: Long, limit: Int = 20): List<SessionInfo> =
+  fun sessions(current: Long, limit: Int = 1000): List<SessionInfo> =
     db.prepareStatement("""
       SELECT s.id, s.name, s.started_at,
         (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id),
@@ -150,6 +150,37 @@ class Store(path: Path) : AutoCloseable {
         buildList { while (rs.next()) add(SessionInfo(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getString(5))) }
       }
     }
+
+  @Synchronized
+  fun load(sid: Long, all: Boolean = false): MutableList<Msg> {
+    val out = mutableListOf<Msg>()
+    val where = if (all) "" else "AND state = 'active'"
+    val order = if (all) "id" else "COALESCE(ord, id)"
+    db.prepareStatement(
+      """SELECT id, kind, role, content, call_id, calls_json, ok, block_type, source, ref
+         FROM messages WHERE session_id = ? $where
+         ORDER BY $order""",
+    ).use { ps ->
+      ps.setLong(1, sid)
+      ps.executeQuery().use { rs ->
+        while (rs.next()) {
+          val type = BlockType.valueOf(rs.getString("block_type"))
+          val source = Source.valueOf(rs.getString("source"))
+          val ref = rs.getString("ref")
+          val msg: Msg = when (val kind = rs.getString("kind")) {
+            "text" -> Msg.Text(Role.valueOf(rs.getString("role")), rs.getString("content"), type, source, ref)
+            "tool_calls" -> Msg.ToolCalls(callsFromJson(rs.getString("calls_json")), rs.getString("content"), type, source, ref)
+            "tool_result" -> Msg.ToolResult(rs.getString("call_id"), rs.getString("content"), rs.getInt("ok") == 1, type, source, ref)
+            else -> error("unknown message kind: $kind")
+          }
+          msg.id = rs.getLong("id")
+          out += msg
+        }
+      }
+    }
+    if (!all) repair(sid, out)
+    return out
+  }
 
   // ==== MESSAGES ====
 
@@ -186,36 +217,6 @@ class Store(path: Path) : AutoCloseable {
       ps.executeUpdate()
       msg.id = ps.generatedKeys.use { it.next(); it.getLong(1) }
     }
-  }
-
-  /** Active messages in render order. Repairs a log cut off mid tool-call. */
-  @Synchronized
-  fun load(sid: Long): MutableList<Msg> {
-    val out = mutableListOf<Msg>()
-    db.prepareStatement(
-      """SELECT id, kind, role, content, call_id, calls_json, ok, block_type, source, ref
-         FROM messages WHERE session_id = ? AND state = 'active'
-         ORDER BY COALESCE(ord, id)""",
-    ).use { ps ->
-      ps.setLong(1, sid)
-      ps.executeQuery().use { rs ->
-        while (rs.next()) {
-          val type = BlockType.valueOf(rs.getString("block_type"))
-          val source = Source.valueOf(rs.getString("source"))
-          val ref = rs.getString("ref")
-          val msg: Msg = when (val kind = rs.getString("kind")) {
-            "text" -> Msg.Text(Role.valueOf(rs.getString("role")), rs.getString("content"), type, source, ref)
-            "tool_calls" -> Msg.ToolCalls(callsFromJson(rs.getString("calls_json")), rs.getString("content"), type, source, ref)
-            "tool_result" -> Msg.ToolResult(rs.getString("call_id"), rs.getString("content"), rs.getInt("ok") == 1, type, source, ref)
-            else -> error("unknown message kind: $kind")
-          }
-          msg.id = rs.getLong("id")
-          out += msg
-        }
-      }
-    }
-    repair(sid, out)
-    return out
   }
 
   private fun repair(sid: Long, msgs: MutableList<Msg>) {

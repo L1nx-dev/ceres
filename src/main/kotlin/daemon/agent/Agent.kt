@@ -105,6 +105,21 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun renameChat(id: Long, name: String) = store.rename(id, name)
   fun removeChat(id: Long) = store.delete(id)
 
+  fun transcript(): List<HistoryLine> = buildList {
+    for (m in store.load(sid, all = true).filter { it.type == BlockType.CHAT && it.source != Source.SYSTEM }) when (m) {
+      is Msg.Text -> when (m.role) {
+        Role.USER -> add(HistoryLine("USER", m.content))
+        Role.ASSISTANT -> add(HistoryLine("AGENT", m.content))
+        else -> {}
+      }
+      is Msg.ToolCalls -> {
+        m.content?.takeIf { it.isNotBlank() }?.let { add(HistoryLine("AGENT", it)) }
+        for (c in m.calls) add(HistoryLine("TOOL", "${tools[c.name]?.icon ?: ""} ${label(c)}"))
+      }
+      is Msg.ToolResult -> {}
+    }
+  }
+
   private val running = java.util.concurrent.atomic.AtomicBoolean(false)
   val busy: Boolean get() = running.get()
 

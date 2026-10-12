@@ -72,7 +72,6 @@ class Commands(private val agent: Agent, private val dreamer: Dreamer) {
     return "removed $ref"
   }
 
-  /** null = valid */
   private fun checkName(name: String): String? = when {
     !nameRe.matches(name) -> "invalid name: start with a letter; letters, digits, _ . - only (max 32)"
     agent.chatByName(name) != null -> "name already used: $name"

@@ -2,6 +2,8 @@ package ceres.core
 
 import kotlinx.serialization.json.*
 
+data class HistoryLine(val role: String, val text: String)
+
 fun encode(e: Event): String = buildJsonObject {
   when (e) {
     is Event.Delta     -> { put("type", "delta"); put("text", e.text) }
