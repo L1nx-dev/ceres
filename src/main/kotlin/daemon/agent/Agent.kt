@@ -9,6 +9,8 @@ import kotlin.io.path.div
 import ceres.cli.Spinner
 import kotlin.io.path.*
 
+private val LISTING_REF = "startup-listing"
+
 class Agent(val config: Config, private val xdg: Xdg) {
   private val llm = ApiV1(config)
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
@@ -44,24 +46,24 @@ class Agent(val config: Config, private val xdg: Xdg) {
   private var memoryIndex = ""
   fun reloadMemory() { memoryIndex = MemoryIndex.build(xdg.memory) }
 
+  private fun syncListing() {
+    val now = StartupList(xdg).startup()
+    val last = history.lastOrNull { it.ref == LISTING_REF } as? Msg.Text
+    if (last != null && last.content.substringAfter('\n').trimStart() == now) return
+    val head = if (last == null) "SYSTEM: available memories and skills"
+               else "SYSTEM: memories/skills changed since this chat was last open"
+    record(Msg.Text(Role.USER, "$head\n$now", source = Source.SYSTEM, ref = LISTING_REF))
+  }
+
   private fun open(id: Long) {
+    sid = id
     history = store.load(id)
     if (history.isEmpty()) seed()
+    syncListing()
     reloadMemory()
   }
-  //
-  // private fun withIndex(h: List<Msg>): List<Msg> {
-  //   val first = h.firstOrNull() as? Msg.Text ?: return h
-  //   if (first.role != Role.SYSTEM) return h
-  //   val idx = "# MEMORY\nFiles you can open with load_memory, or search with recall:\n$memoryIndex"
-  //   return listOf(first.copy(content = first.content + "\n\n" + idx)) + h.drop(1)
-  // }
-
-  init { open(store.lastSession() ?: store.newSession()) }   // resume last session
 
   private fun seed() {
-    startupLine = StartupLine()
-    sid = startupLine.startup()
     val text = listOf("SOUL.md", "USER.md")
       .map { xdg.config / it }
       .filter { it.exists() }
@@ -96,6 +98,8 @@ class Agent(val config: Config, private val xdg: Xdg) {
     store.append(sid, msg)
     history += msg
   }
+
+  init { open(store.lastSession() ?: store.newSession()) }
 
   val currentId get() = sid
   fun chats() = store.sessions(sid)
@@ -140,7 +144,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
     val defs = tools.values.map { it.def }
     repeat(config.maxToolDepth) {
       val reply = try {
-        llm.stream(withIndex(history), defs, cancel) { emit(Event.Delta(it)) }
+        llm.stream(history, defs, cancel) { emit(Event.Delta(it)) }
       } catch (e: Exception) {
         emit(if (cancel.cancelled) Event.Cancelled else Event.Error(e.message ?: "request failed"))
         return

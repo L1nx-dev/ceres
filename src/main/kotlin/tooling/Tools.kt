@@ -79,7 +79,9 @@ interface Tool {
   fun run(args: JsonObject, ctx: ToolContext): String
 }
 
+
 class Tools(xdg: Xdg) {
+  val skills = Skills(xdg.skills)
   val list = listOf<Tool>(
     ReadFile(), 
     ListFiles(),
@@ -92,7 +94,7 @@ class Tools(xdg: Xdg) {
     WebFetch(),
     Recall(xdg.memory, xdg.config / "SKETCHPAD.md"),
     LoadMemory(xdg.memory),
-    LoadSkill(xdg.skills),
+    LoadSkill(skills),
     Remember(xdg.config / "SKETCHPAD.md"),
   ).associateBy { it.def.name }
 }

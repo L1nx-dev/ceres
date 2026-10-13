@@ -1,19 +1,14 @@
 package ceres.main
 
-import kotlinx.serialization.json.*
-import java.nio.file.attribute.*
+import ceres.system.*
+import ceres.tools.Skills
 import java.nio.file.*
-import ceres.tools.*
-import ceres.core.*
+import java.nio.file.attribute.*
 import java.nio.file.Path
-import kotlin.io.path.div
-import ceres.cli.Spinner
-import kotlin.io.path.*
-	
-class StartupList(
-  xdg: Xdg
-) {
-  private fun listFiles(dir) {
+
+class StartupList(private val xdg: Xdg) {
+  private fun listFiles(dir: Path): String {
+    if (!Files.isDirectory(dir)) return "(empty)"
     val lines = Files.list(dir).use { s ->
       s.sorted().limit(500).map { p ->
         val a = Files.readAttributes(p, PosixFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
@@ -23,32 +18,15 @@ class StartupList(
     }
     return lines.joinToString("\n").ifEmpty { "(empty)" }
   }
-  
-  private fun memories() {
-    var f = "\n# Available memories"
-    f = f + listFiles(xdg.memory)
-    return f
+
+  private fun memories() = "# Available memories\n" + listFiles(xdg.memory)
+
+  private fun skills(): String {
+    val items = Skills(xdg.skills).list()
+    val body = if (items.isEmpty()) "(none)" else items.joinToString("\n") { "- ${it.name}: ${it.description}" }
+    return "# Available skills (load with the `skill` tool)\n$body"
   }
 
-  private fun skills(final) {
-    var f = final + "# Available skills"
-    f = f + listFiles(xdg.skills)
-    return f
-  }
-
-  fun startup() {return = memories() + skills()}
+  fun startup(): String = memories() + "\n\n" + skills()
 }
 
-  // private fun checkPath(dir: String) {
-  //   private fun where(type: String) {
-  //     if (type = "mem") {
-  //       println("memory register"); return
-  //     } else println("skill index"); return
-  //   }}
-  //   val p = root.resolve(dir).normalize()
-  //   require(p.startsWith(root)) where(type)
-  //   var probe = p
-  //   while (!Files.exists(probe, LinkOption.NOFOLLOW_LINKS)) probe = probe.parent
-  //   require(probe.toRealPath().startsWith(root)) where(type)
-  //   return p
-  // }
