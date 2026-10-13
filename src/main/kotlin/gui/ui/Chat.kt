@@ -1,7 +1,12 @@
 package ceres.gui.common
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -10,9 +15,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun Chat(state: ChatState) {
+  val listState = rememberLazyListState()
+  // val coroutineScope = rememberCoroutineScope()
+  var isInputExpanded by remember { mutableStateOf(false) }
+
+  val showScrollToBottomButton by remember {
+    derivedStateOf { listState.canScrollForward }
+  }
+
+  val needsFade = showScrollToBottomButton || isInputExpanded
+
   Box(Modifier.fillMaxSize()) {
     Box(
       modifier = Modifier
@@ -20,32 +36,55 @@ fun Chat(state: ChatState) {
         .fillMaxHeight()
         .widthIn(max = 900.dp)
         .fillMaxWidth()
-        .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
-        .drawWithContent {
-          drawContent()
-          drawRect(
-            brush = Brush.verticalGradient(
-              0.0f to Color.White,
-              0.85f to Color.White,
-              0.92f to Color.Transparent,
-              1.0f to Color.Transparent,
-              startY = 0f,
-              endY = size.height
-            ),
-            blendMode = BlendMode.DstIn
-          )
+        .let { mod ->
+          if (needsFade) {
+            mod
+              .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
+              .drawWithContent {
+                drawContent()
+                drawRect(
+                  brush = Brush.verticalGradient(
+                    0.0f to Color.White,
+                    0.85f to Color.White,
+                    0.92f to Color.Transparent,
+                    1.0f to Color.Transparent,
+                    startY = 0f,
+                    endY = size.height
+                  ),
+                  blendMode = BlendMode.DstIn
+                )
+              }
+          } else mod
         }
     ) {
       MessageList(
         state.lines,
+        listState = listState,
         modifier = Modifier.fillMaxSize()
       )
     }
+    
+    Box(
+      modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .widthIn(max = 900.dp)
+        .fillMaxWidth(),
+      contentAlignment = Alignment.BottomCenter
+    ) {
+      GoToBottom(
+        modifier = Modifier.padding(bottom = 80.dp, end = 16.dp),
+        showScrollToBottomButton = showScrollToBottomButton,
+        state = state,
+        listState = listState
+      )
+    }
 
-    // 2. Input bar floating on top
     InputBar(
       busy = state.busy, 
-      onSend = state::send, 
+      onSend = { 
+        state.send(it)
+        isInputExpanded = false
+      }, 
       onStop = state::cancel,
       modifier = Modifier
         .align(Alignment.BottomCenter)

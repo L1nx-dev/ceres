@@ -13,8 +13,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 
 @Composable
-fun MessageList(lines: List<Line>, modifier: Modifier = Modifier) {
-  val listState = rememberLazyListState()
+fun MessageList(
+  lines: List<Line>, 
+  listState: LazyListState = rememberLazyListState(), 
+  modifier: Modifier = Modifier
+) {
   val grouped by remember(lines) { derivedStateOf { group(lines) } }
   val open = remember { mutableStateMapOf<Long, Boolean>() }
 
@@ -48,7 +51,7 @@ fun MessageRow(line: Line) {
       }
     }
     LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
-      GlassPanel(Modifier.widthIn(max = 640.dp), blur = 12.dp) {
+      GlassPanel(Modifier.widthIn(max = 900.dp), blur = 12.dp) {
         Text(line.text, Modifier.padding(12.dp))
       }
     }

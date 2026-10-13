@@ -37,9 +37,9 @@ fun StarBackground(field: StarField, modifier: Modifier = Modifier) {
 }
 
 private const val backgroundStars = """
-    const float SPEED  = 0.16;
-    const int   LAYERS = 20;
-    const float DEPTH  = 45.0;
+    const float SPEED  = 0.1;
+    const int   LAYERS = 30;
+    const float DEPTH  = 55.0;
     const float THICK  = 0.3;
     const float SIZE   = 16.0;
     const float GAIN   = 5.5;
