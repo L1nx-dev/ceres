@@ -1,8 +1,10 @@
+import org.gradle.api.file.DuplicatesStrategy
+
 plugins {
-    kotlin("jvm") version "2.0.21"
-    kotlin("plugin.serialization") version "2.0.21"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
-    id("org.jetbrains.compose") version "1.7.0"
+    kotlin("jvm") version "2.4.21"
+    kotlin("plugin.serialization") version "2.4.21"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.21"
+    id("org.jetbrains.compose") version "1.12.1"
     application
 }
 
@@ -12,8 +14,8 @@ repositories {
 }
 
 dependencies {
-    // implementation("androidx.compose.material3:material3-android:1.4.0")
-    // implementation("androidx.compose.runtime:runtime-android:1.12.1")
+    implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.46.0")
+
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
@@ -26,8 +28,13 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
-kotlin { jvmToolchain(21) }
-application { mainClass = "ceres.main.MainKt" }
+kotlin {
+    jvmToolchain(21)
+}
+
+application {
+    mainClass = "ceres.main.MainKt"
+}
 
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`
@@ -37,4 +44,18 @@ tasks.register<JavaExec>("runGui") {
     group = "application"
     classpath = sourceSets["main"].runtimeClasspath
     mainClass = "ceres.gui.desktop.MainKt"
+}
+
+tasks.register("inspectDist") {
+    doLast {
+        val task = tasks.named<Sync>("installDist").get()
+        task.inputs.files.files
+            .filter { it.name == "runtime-desktop-1.12.1.jar" }
+            .forEach { println(it.absolutePath) }
+    }
+}
+
+
+tasks.named<Sync>("installDist") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

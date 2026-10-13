@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import com.mikepenz.markdown.m3.Markdown
 
 @Composable
 fun MessageList(
@@ -53,6 +54,7 @@ fun MessageRow(line: Line) {
     LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
       GlassPanel(Modifier.widthIn(max = 900.dp), blur = 12.dp) {
         Text(line.text, Modifier.padding(12.dp))
+        // Markdown(line.text, modifier = Modifier.padding(12.dp))
       }
     }
     LineRole.TOOL -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
