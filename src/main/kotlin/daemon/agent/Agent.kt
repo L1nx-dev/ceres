@@ -45,22 +45,23 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun reloadMemory() { memoryIndex = MemoryIndex.build(xdg.memory) }
 
   private fun open(id: Long) {
-    sid = id
     history = store.load(id)
     if (history.isEmpty()) seed()
     reloadMemory()
   }
-
-  private fun withIndex(h: List<Msg>): List<Msg> {
-    val first = h.firstOrNull() as? Msg.Text ?: return h
-    if (first.role != Role.SYSTEM) return h
-    val idx = "# MEMORY\nFiles you can open with load_memory, or search with recall:\n$memoryIndex"
-    return listOf(first.copy(content = first.content + "\n\n" + idx)) + h.drop(1)
-  }
+  //
+  // private fun withIndex(h: List<Msg>): List<Msg> {
+  //   val first = h.firstOrNull() as? Msg.Text ?: return h
+  //   if (first.role != Role.SYSTEM) return h
+  //   val idx = "# MEMORY\nFiles you can open with load_memory, or search with recall:\n$memoryIndex"
+  //   return listOf(first.copy(content = first.content + "\n\n" + idx)) + h.drop(1)
+  // }
 
   init { open(store.lastSession() ?: store.newSession()) }   // resume last session
 
   private fun seed() {
+    startupLine = StartupLine()
+    sid = startupLine.startup()
     val text = listOf("SOUL.md", "USER.md")
       .map { xdg.config / it }
       .filter { it.exists() }
