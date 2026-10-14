@@ -13,6 +13,7 @@ import org.jetbrains.skia.Paint
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
+import androidx.compose.ui.graphics.drawscope.DrawScope
 
 class StarField {
   val builder = RuntimeShaderBuilder(
@@ -20,6 +21,21 @@ class StarField {
   )
   val time = mutableFloatStateOf(0f)
   var size by mutableStateOf(Size.Zero)
+  fun draw(scope: DrawScope) {
+    if (size.width <= 0f || size.height <= 0f) return
+    builder.uniform("resolution", size.width, size.height)
+    builder.uniform("time", time.floatValue)
+    val shader = builder.makeShader()
+    val paint = Paint()
+    try {
+      paint.shader = shader
+      scope.drawContext.canvas.nativeCanvas
+        .drawRect(Rect.makeWH(size.width, size.height), paint)
+    } finally {
+      paint.close()
+      shader.close()
+    }
+  }
 }
 
 @Composable

@@ -40,12 +40,9 @@ fun GlassPanel(
       .border(1.dp, Color(0x22FFFFFF), shape)
   ) {
     if (field != null && blur > 0.dp) {
-      StarBackground(
-        field = field,
-        modifier = Modifier
-          .matchParentSize()
-          .blur(blur, BlurredEdgeTreatment.Unbounded)
-      )
+      Canvas(Modifier.matchParentSize().blur(blur, BlurredEdgeTreatment.Unbounded)) {
+        translate(-pos.x, -pos.y) { field.draw(this) }
+      }
     }
     Box(Modifier.matchParentSize().background(tint))
     content()
