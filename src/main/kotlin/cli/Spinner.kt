@@ -17,7 +17,8 @@ class Spinner(
   private val out: PrintStream = System.out,
 ) {
   private val label = label.take(Term.width - 4)
-  private val frames = "◜◝◞◟"
+  // private val frames = "◜◝◞◟"
+  private val frames = "⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏"
   @Volatile private var running = false
   private var thread: Thread? = null
 
