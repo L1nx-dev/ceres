@@ -34,7 +34,7 @@ class ToolContext(
     val bwrap = listOf(
       "bwrap",
       "--unshare-all",
-      // "--share-net",
+      "--share-net",
       "--die-with-parent",
       "--new-session",
       "--clearenv",
@@ -49,6 +49,11 @@ class ToolContext(
       "--tmpfs", "/tmp",
       "--bind", root.toString(), "/Ceres", // TODO: make configurable
       "--chdir", "/Ceres",
+      "--tmpfs", "/etc",
+      "--ro-bind", "/etc/resolv.conf", "/etc/resolv.conf",
+      "--ro-bind", "/etc/ssl", "/etc/ssl",
+      "--ro-bind", "/etc/static", "/etc/static",   // NixOS: /etc/ssl, /etc/resolv.conf etc. often symlink into here
+      "--ro-bind", "/etc/passwd", "/etc/passwd",
       "--ro-bind", "/etc/localtime", "/etc/localtime",
       "--",
     )
