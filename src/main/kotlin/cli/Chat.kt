@@ -2,7 +2,7 @@ package ceres.cli
 
 import ceres.system.*
 import ceres.core.*
-import kotlin.io.path.div
+import kotlin.io.path.*
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReader
 import org.jline.reader.LineReaderBuilder
@@ -24,7 +24,34 @@ class Chat(
   private val httpAddress = "http://${config.host}:${config.port}"
   @Volatile private var lastId = -1L
   @Volatile private var done = java.util.concurrent.CountDownLatch(1)
-  @Volatile private var chatId: Long = -1L
+
+  private val chatFile = xdg.share / "cli-chat"
+
+  private fun loadChatId(): Long =
+    runCatching { chatFile.readText().trim().toLong() }.getOrDefault(-1L)
+
+  private fun select(id: Long) {
+    chatId = id
+    runCatching {
+      val tmp = chatFile.resolveSibling("cli-chat.tmp")
+      tmp.writeText(id.toString())
+      java.nio.file.Files.move(tmp, chatFile,
+        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+        java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+    }
+  }
+
+  private fun reconcile() {
+    val client = Client(config, xdg)
+    val ids = runCatching { client.chats().map { it.first } }.getOrNull() ?: return
+    if (chatId in ids) return
+    val old = chatId
+    val id = if (ids.isEmpty()) client.create() else ids.first()
+    select(id)
+    println("note: chat $old was recreated -> $id")
+  }
+
+  @Volatile private var chatId: Long = loadChatId()
 
   private fun req(path: String) =
     java.net.http.HttpRequest.newBuilder(java.net.URI.create(httpAddress + path))
@@ -107,6 +134,7 @@ class Chat(
 
             val tokens = tokenRe.findAll(buffer).map { it.value }.toList()
           val words = tokens.count { it.isNotBlank() }
+
           val sb = AttributedStringBuilder()
           var n = 0
           for (t in tokens) {
@@ -122,6 +150,7 @@ class Chat(
       .build()
 
     val events = listen()
+    reconcile()
 
     while (true) {
       val input = try {
@@ -151,7 +180,7 @@ class Chat(
               .POST(java.net.http.HttpRequest.BodyPublishers.ofString(input))
               .build(),
             java.net.http.HttpResponse.BodyHandlers.ofString())
-          r.headers().firstValue("X-Chat").ifPresent { chatId = it.toLong() }
+            r.headers().firstValue("X-Chat").ifPresent { select(it.toLong()) }
           println(r.body())
         }
 
