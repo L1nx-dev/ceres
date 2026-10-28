@@ -47,6 +47,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun reloadMemory() { memoryIndex = MemoryIndex.build(xdg.memory) }
 
   private fun syncListing() {
+    println("syncListing")
     val now = StartupList(xdg).startup()
     val last = history.lastOrNull { it.ref == LISTING_REF } as? Msg.Text
     if (last != null && last.content.substringAfter('\n').trimStart() == now) return
@@ -70,15 +71,17 @@ class Agent(val config: Config, private val xdg: Xdg) {
       .map { it.readText().trim() }
       .filter { it.isNotEmpty() }
       .joinToString("\n\n")
+    println("soul")
 
     val bootFile = xdg.config / "BOOT.script"
     val shellOut = if (bootFile.exists()) {
+      println("boot")
         val cmds = bootFile.readLines()
           .map { it.trim() }
           .filter { it.isNotEmpty() && !it.startsWith("#") }
         if (cmds.isEmpty()) ""
-        else cmds.joinToString("\n\n") { cmd -> "$ $cmd\n${exec(cmd)}" }
-          .let { "#SYSTEM INFO\n\n$it" }
+        else cmds.joinToString("\n") { cmd -> exec(cmd).trim() }
+          .let { "# SYSTEM INFO\n$it" }
     } else ""
 
     val full = listOf(text, shellOut).filter { it.isNotEmpty() }.joinToString("\n\n")
