@@ -1,11 +1,12 @@
 package ceres.cli
 
-import kotlin.io.path.*
 import ceres.system.*
 import ceres.core.*
-import kotlin.concurrent.thread
 import java.util.stream.Stream
+import kotlin.io.path.*
+import kotlin.concurrent.thread
 import kotlin.system.exitProcess
+import kotlinx.serialization.json.*
 
 class Client(private val config: Config, private val xdg: Xdg) {
   private val http = java.net.http.HttpClient.newHttpClient()
@@ -29,6 +30,14 @@ class Client(private val config: Config, private val xdg: Xdg) {
     repeat(50) { if (ping()) return; Thread.sleep(200) }
     error("daemon did not start")
   }
+
+  fun create(): Long {
+    val r = http.send(req("/chat")
+      .POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),
+      java.net.http.HttpResponse.BodyHandlers.ofString())
+    check(r.statusCode() == 200) { "HTTP ${r.statusCode()} ${r.body()}" }
+    return r.body().trim().toLong()
+  }
  
   fun events(lastId: Long): Stream<String> = http.send(
     req("/events").header("Last-Event-ID", lastId.toString()).GET().build(),
@@ -41,8 +50,18 @@ class Client(private val config: Config, private val xdg: Xdg) {
       check(r.statusCode() == 202) { "HTTP ${r.statusCode()} ${r.body()}" }
     }
 
-  fun command(line: String): String = http.send(
-    req("/command").timeout(java.time.Duration.ofMinutes(10))
+  fun chats(): List<Pair<Long, String?>> {
+    val r = http.send(req("/chats").GET().build(),
+      java.net.http.HttpResponse.BodyHandlers.ofString())
+    check(r.statusCode() == 200) { "HTTP ${r.statusCode()} ${r.body()}" }
+    return kotlinx.serialization.json.Json.parseToJsonElement(r.body()).jsonArray.map {
+      val o = it.jsonObject
+      o.getValue("id").jsonPrimitive.long to o["name"]?.jsonPrimitive?.contentOrNull
+    }
+  }
+
+  fun command(line: String, chat: Long): String = http.send(
+    req("/command?chat=$chat").timeout(java.time.Duration.ofMinutes(10))
       .POST(java.net.http.HttpRequest.BodyPublishers.ofString(line)).build(),
     java.net.http.HttpResponse.BodyHandlers.ofString()).body()
 
@@ -57,7 +76,8 @@ fun promptOnce(config: Config, xdg: Xdg, chat: String, text: String) {
   val client = Client(config, xdg)
   client.ensureDaemon()
 
-  val sw = client.command("/switch $chat")
+  val chatId = client.create()
+  val sw = client.command("/switch $chat", chatId)
   if (sw.startsWith("error")) { System.err.println(sw); exitProcess(2) }
 
   val done = java.util.concurrent.CountDownLatch(1)
@@ -76,7 +96,7 @@ fun promptOnce(config: Config, xdg: Xdg, chat: String, text: String) {
       }
     }
   }
-  Thread.sleep(200) //TODO make this not as shitty
+  Thread.sleep(100) //TODO make this not as shitty
   client.prompt(text)
   done.await()
   println()

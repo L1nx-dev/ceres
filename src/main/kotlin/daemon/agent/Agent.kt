@@ -12,6 +12,9 @@ import kotlin.io.path.*
 private val LISTING_REF = "startup-listing"
 
 class Agent(val config: Config, private val xdg: Xdg) {
+  fun resolveChat(ref: String) = store.resolve(ref)
+  fun chatByName(name: String) = store.byName(name)
+  fun renameChat(id: Long, name: String) = store.rename(id, name)
   private val llm = ApiV1(config)
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
 
@@ -102,19 +105,14 @@ class Agent(val config: Config, private val xdg: Xdg) {
     history += msg
   }
 
-  init { open(store.lastSession() ?: store.newSession()) }
 
-  val currentId get() = sid
-  fun chats() = store.sessions(sid)
-  fun newChat(name: String?): Long { open(store.newSession(name)); return sid }
-  fun resolveChat(ref: String) = store.resolve(ref)
-  fun chatByName(name: String) = store.byName(name)
-  fun switchChat(id: Long) = open(id)
-  fun renameChat(id: Long, name: String) = store.rename(id, name)
-  fun removeChat(id: Long) = store.delete(id)
+  fun chats(current: Long) = store.sessions(current)
+  fun createChat(name: String?): Long = store.newSession(name)
+  fun exists(id: Long) = store.exists(id)
+  fun removeChat(id: Long) { store.delete(id); if (id == sid) sid = -1 }
 
-  fun transcript(): List<HistoryLine> = buildList {
-    for (m in store.load(sid, all = true).filter { it.type == BlockType.CHAT && it.source != Source.SYSTEM }) when (m) {
+  fun transcript(chat: Long): List<HistoryLine> = buildList {
+    for (m in store.load(chat, all = true).filter { it.type == BlockType.CHAT && it.source != Source.SYSTEM }) when (m) {
       is Msg.Text -> when (m.role) {
         Role.USER -> add(HistoryLine("USER", m.content))
         Role.ASSISTANT -> add(HistoryLine("AGENT", m.content))
@@ -128,13 +126,21 @@ class Agent(val config: Config, private val xdg: Xdg) {
     }
   }
 
+  fun prompt(chat: Long, input: String, files: List<String>, cancel: Cancel, emit: (Event) -> Unit) {
+    check(running.compareAndSet(false, true)) { "run already active" }
+    try {
+      if (chat != sid) open(chat)
+      if (files.isNotEmpty())
+        record(Msg.Text(Role.USER,
+          "SYSTEM: new files:\n" + files.joinToString("\n") { "./mnt/share/$it" },
+          source = Source.SYSTEM))
+      runLoop(input, cancel, emit)
+    } finally { running.set(false) }
+  }
+
   private val running = java.util.concurrent.atomic.AtomicBoolean(false)
   val busy: Boolean get() = running.get()
 
-  fun prompt(input: String, cancel: Cancel, emit: (Event) -> Unit) {
-    check(running.compareAndSet(false, true)) { "run already active" }
-    try { runLoop(input, cancel, emit) } finally { running.set(false) }
-  }
 
   fun runLoop(
     input: String,

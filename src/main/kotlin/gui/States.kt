@@ -4,7 +4,12 @@ import ceres.core.*
 import androidx.compose.runtime.*
 import ceres.core.Event
 
-interface ChatApi { fun prompt(text: String); fun cancel(); fun history(): List<HistoryLine> }
+data class ChatInfo(val id: Long, val name: String?)
+
+interface ChatApi {
+  fun prompt(text: String); fun cancel(); fun history(): List<HistoryLine>
+  fun chats(): List<ChatInfo>; fun create(name: String?): Long; fun select(id: Long)
+}
 
 enum class LineRole { USER, AGENT, TOOL, ERROR, THINKING }
 
@@ -20,6 +25,8 @@ class ChatState(private val api: ChatApi) {
 
   private fun add(role: LineRole, text: String) { lines += Line(nextId++, role, text) }
 
+  fun select(id: Long) { if (busy) return; api.select(id); load(api.history()) }
+  fun newChat(name: String?) { if (busy) return; select(api.create(name)) }
   fun send(text: String) { add(LineRole.USER, text); busy = true; api.prompt(text) }
   fun cancel() = api.cancel()
 

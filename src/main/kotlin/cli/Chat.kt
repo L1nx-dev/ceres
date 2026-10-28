@@ -2,12 +2,12 @@ package ceres.cli
 
 import ceres.system.*
 import ceres.core.*
+import kotlin.io.path.div
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReader
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.UserInterruptException
 import org.jline.terminal.TerminalBuilder
-import kotlin.io.path.div
 import org.jline.reader.impl.DefaultHighlighter
 import org.jline.utils.*
 import org.jline.reader.impl.LineReaderImpl
@@ -24,6 +24,7 @@ class Chat(
   private val httpAddress = "http://${config.host}:${config.port}"
   @Volatile private var lastId = -1L
   @Volatile private var done = java.util.concurrent.CountDownLatch(1)
+  @Volatile private var chatId: Long = -1L
 
   private fun req(path: String) =
     java.net.http.HttpRequest.newBuilder(java.net.URI.create(httpAddress + path))
@@ -136,13 +137,24 @@ class Chat(
           terminal.puts(InfoCmp.Capability.clear_screen)
           terminal.flush()
         }
+
+        input == "/chats" -> {
+          Client(config, xdg).chats().forEach { (id, name) ->
+            println("${if (id == chatId) "*" else " "} [$id] ${name ?: ""}")
+          }
+        }
+
         input.startsWith("/") -> {
           val r = http.send(
-            req("/command").timeout(java.time.Duration.ofMinutes(10))
-              .POST(java.net.http.HttpRequest.BodyPublishers.ofString(input)).build(),
+            req("/command?chat=$chatId")
+              .timeout(java.time.Duration.ofMinutes(10))
+              .POST(java.net.http.HttpRequest.BodyPublishers.ofString(input))
+              .build(),
             java.net.http.HttpResponse.BodyHandlers.ofString())
+          r.headers().firstValue("X-Chat").ifPresent { chatId = it.toLong() }
           println(r.body())
         }
+
         else -> {
           done = java.util.concurrent.CountDownLatch(1)
           val prev = terminal.handle(Terminal.Signal.INT) {
@@ -152,7 +164,9 @@ class Chat(
           }
           try {
             val r = http.send(
-              req("/prompt").POST(java.net.http.HttpRequest.BodyPublishers.ofString(input)).build(),
+              req("/prompt?chat=$chatId")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(input))
+                .build(),
               java.net.http.HttpResponse.BodyHandlers.ofString())
               if (r.statusCode() == 202) {
                 while (!done.await(2, java.util.concurrent.TimeUnit.SECONDS)) {

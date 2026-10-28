@@ -17,7 +17,50 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.TextLayoutResult
 
+private val headingRe = Regex("""(?m)^#{1,6} .*$""")
+private val boldRe    = Regex("""\*\*(.+?)\*\*""")
+private val italicRe  = Regex("""(?<![*\w])\*(?!\*)(.+?)(?<!\*)\*(?![*\w])""")
+private val codeRe    = Regex("""`[^`\n]+`""")
+private val fenceRe   = Regex("""```[\s\S]*?(```|$)""")
+
+private val monoFont = SpanStyle(fontFamily = FontFamily.Monospace)
+private val listRe = Regex("""(?m)^[ \t]*([-*+]|\d+[.)])(?= )""")
+
+private val mono = SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0x33FFFFFF))
+
+private val mdTransformation = VisualTransformation { text ->
+  val s = text.text
+  val styled = buildAnnotatedString {
+    append(s)
+    fun mark(re: Regex, st: SpanStyle) =
+      re.findAll(s).forEach { addStyle(st, it.range.first, it.range.last + 1) }
+    mark(headingRe, SpanStyle(fontWeight = FontWeight.Bold))
+    mark(boldRe, SpanStyle(fontWeight = FontWeight.Bold))
+    mark(italicRe, SpanStyle(fontStyle = FontStyle.Italic))
+    mark(codeRe, mono)
+    listRe.findAll(s).forEach { m ->
+      m.groups[1]?.range?.let {
+        addStyle(SpanStyle(color = Color(0xFF8AB4F8), fontWeight = FontWeight.Bold), it.first, it.last + 1)
+      }
+    }
+    mark(fenceRe, monoFont)
+  }
+  TransformedText(styled, OffsetMapping.Identity)
+}
 
 @Composable
 fun InputBar(
@@ -28,6 +71,8 @@ fun InputBar(
 ) {
   var expanded by remember { mutableStateOf(false) }
   var tf by remember { mutableStateOf(TextFieldValue()) }
+
+  var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
   fun send() {
     val t = tf.text.trim()
@@ -48,11 +93,12 @@ fun InputBar(
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
       BasicTextField(
         value = tf,
+        visualTransformation = mdTransformation,
         onValueChange = { tf = it; if (it.text.isEmpty()) expanded = false },
         textStyle = style,
         cursorBrush = SolidColor(fg),
         maxLines = 30,
-        onTextLayout = { if (it.lineCount > 1) expanded = true },
+        onTextLayout = { layout = it; if (it.lineCount > 1) expanded = true },
         modifier = Modifier
           .fillMaxWidth()
           .padding(
@@ -61,6 +107,20 @@ fun InputBar(
             top = 14.dp,
             bottom = if (expanded) 52.dp else 14.dp,
           )
+          .drawBehind {
+            val l = layout ?: return@drawBehind
+            val text = l.layoutInput.text.text
+            fenceRe.findAll(text).forEach { m ->
+              val top = l.getLineTop(l.getLineForOffset(m.range.first))
+              val bottom = l.getLineBottom(l.getLineForOffset(m.range.last))
+              drawRoundRect(
+                Color(0x33FFFFFF),
+                topLeft = Offset(-6.dp.toPx(), top),
+                size = Size(size.width + 12.dp.toPx(), bottom - top),
+                cornerRadius = CornerRadius(8.dp.toPx()),
+              )
+            }
+          }
           .onPreviewKeyEvent {
             if (it.type != KeyEventType.KeyDown || it.key != Key.Enter) return@onPreviewKeyEvent false
             if (it.isShiftPressed) {

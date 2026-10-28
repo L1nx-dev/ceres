@@ -16,9 +16,11 @@ import ceres.gui.common.*
 import androidx.compose.runtime.*
 
 fun main() {
-  val config = Config(Xdg(seed = false))
-  val api = Api(config)
+  val xdg = Xdg(seed = false)
+  val config = Config(xdg)
+  val api = Api(config, xdg)
   val state = ChatState(api)
+  api.initChat()
   state.load(api.history())
   api.listen(state::onEvent)
   application {

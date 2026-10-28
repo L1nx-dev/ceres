@@ -5,7 +5,7 @@ import kotlin.concurrent.thread
 import ceres.core.*
 import ceres.system.*
 
-class Item(val id: Long, val event: Event)
+class Item(val id: Long, val chat: Long, val event: Event)
 
 class Hub(private val agent: Agent) {
   private val lock = Any()
@@ -16,27 +16,28 @@ class Hub(private val agent: Agent) {
   private val subs = HashSet<LinkedBlockingQueue<Item>>()
   @Volatile private var cancel: Cancel? = null
 
-  fun start(text: String): Boolean {
+  fun start(chat: Long, text: String, files: List<String>): Boolean {
     val c = Cancel()
     synchronized(lock) {
       if (active) return false
       active = true; seq = 0; buffer.clear(); cancel = c
     }
     thread(name = "run") {
-      try { agent.prompt(text, c, ::publish) }
-      catch (e: Exception) { publish(Event.Error(e.message ?: "internal error")) }
+      val emit = { e: Event -> publish(chat, e) }
+      try { agent.prompt(chat, text, files, c, emit) }
+      catch (e: Exception) { emit(Event.Error(e.message ?: "internal error")) }
       finally { synchronized(lock) { active = false } }
     }
     return true
   }
 
-  fun cancel() { cancel?.cancel() }
-
-  private fun publish(e: Event) = synchronized(lock) {
-    val it = Item(++seq, e)
+  private fun publish(chat: Long, e: Event) = synchronized(lock) {
+    val it = Item(++seq, chat, e)
     buffer += it
     subs.forEach { q -> q.offer(it) }
   }
+
+  fun cancel() { cancel?.cancel() }
 
   fun subscribe(lastId: Long): LinkedBlockingQueue<Item> = synchronized(lock) {
     val q = LinkedBlockingQueue<Item>()
@@ -44,5 +45,6 @@ class Hub(private val agent: Agent) {
     subs += q
     q
   }
+
   fun unsubscribe(q: LinkedBlockingQueue<Item>) = synchronized(lock) { subs -= q }
 }

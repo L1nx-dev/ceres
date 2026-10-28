@@ -7,8 +7,9 @@ import ceres.system.*
 fun main(args: Array<String>) {
   val xdg = Xdg()
   val config = Config(xdg)
+  val share = Share(xdg.share)
   when (args.firstOrNull()) {
-    "daemon" -> runDaemon(config, xdg)
+    "daemon" -> runDaemon(config, xdg, share)
     "stop"   -> Client(config, xdg).shutdown()
     "kill"   -> ProcessBuilder("systemctl", "--user", "kill", "ceres").inheritIO().start().waitFor()
     "prompt" -> {
