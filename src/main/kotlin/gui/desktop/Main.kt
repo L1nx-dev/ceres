@@ -20,6 +20,7 @@ fun main() {
   val config = Config(xdg)
   val api = Api(config, xdg)
   val state = ChatState(api)
+  api.ensureDaemon()
   api.initChat()
   state.load(api.history())
   api.listen(state::onEvent)
