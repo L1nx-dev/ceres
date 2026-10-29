@@ -40,6 +40,7 @@ class Spinner(
     thread?.interrupt()
     thread?.join()
     val mark = when {
+      !ok && icon != null -> "${Ansi.RED}${icon}"
       !ok -> "${Ansi.RED} "
       icon != null -> "${Ansi.GREEN}${icon}"
       else -> "${Ansi.GREEN}󰸞 "
