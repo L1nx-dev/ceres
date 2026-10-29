@@ -5,7 +5,7 @@ import java.nio.file.*
 import java.time.LocalDateTime
 
 class Recall(private val dir: Path, private val pad: Path) : Tool {
-  override val icon get() = "🔍"
+  override val icon get() = "󰡦 "
   override val def = ToolDefinition(
     name = "recall",
     description = "Search memory by keywords. Returns matching files with " +
@@ -50,7 +50,7 @@ class Recall(private val dir: Path, private val pad: Path) : Tool {
 }
 
 class LoadMemory(private val dir: Path) : Tool {
-  override val icon get() = "🧠"
+  override val icon get() = "󱤟 "
   override val def = ToolDefinition(
     name = "load_memory",
     description = "Load a memory file by its path from the memory index."+

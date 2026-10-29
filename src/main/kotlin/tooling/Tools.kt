@@ -77,12 +77,13 @@ class ToolContext(
   }
 }
 
-interface Tool {
-  val source: Source get() = Source.TOOL
-  val icon: String? get() = null
-  val def: ToolDefinition
-  fun run(args: JsonObject, ctx: ToolContext): String
-}
+  interface Tool {
+    val source: Source get() = Source.TOOL
+    val icon: String? get() = null
+    val def: ToolDefinition
+    fun iconFor(args: JsonObject): String? = icon
+    fun run(args: JsonObject, ctx: ToolContext): String
+  }
 
 
 class Tools(xdg: Xdg) {

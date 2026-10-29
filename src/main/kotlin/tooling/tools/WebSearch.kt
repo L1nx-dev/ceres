@@ -7,10 +7,11 @@ import java.net.http.*
 import java.nio.charset.StandardCharsets
 import java.time.*
 import ceres.main.*
+import ceres.core.Ansi
 import ceres.system.*
 
 class WebSearch : Tool {
-override val icon get() = "🌐"
+override val icon get() = "${Ansi.CYAN}󰜏 "
 override val source = Source.WEB
   override val def = ToolDefinition(
     name = "web_search",

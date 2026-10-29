@@ -4,7 +4,7 @@ import kotlinx.serialization.json.*
 import java.nio.file.*
 
 class LoadSkill(private val skills: Skills) : Tool {
-  override val icon get() = "📖"
+  override val icon get() = " "
   override val def = ToolDefinition(
     name = "skill",
     description = "Load a skill from the skill index. Without 'file' it returns the skill's SKILL.md " +

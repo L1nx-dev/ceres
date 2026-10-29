@@ -5,7 +5,7 @@ import java.nio.file.attribute.*
 import java.nio.file.*
 
 class EditFile : Tool {
-  override val icon get() = "📝"
+  override val icon get() = " "
   override val def = ToolDefinition(
     name = "edit",
     description = "Replace one exact occurrence of old_str with new_str in a file. " +
