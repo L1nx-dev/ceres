@@ -88,15 +88,15 @@ interface Tool {
 class Tools(xdg: Xdg) {
   val skills = Skills(xdg.skills)
   val list = listOf<Tool>(
-    ReadFile(), 
-    ListFiles(),
-    MakeDir(),
+    // ReadFile(), 
+    // ListFiles(),
+    // MakeDir(),
+    // RemoveFile(),
     EditFile(),
     MakeFile(),
     WebSearch(),
-    RemoveFile(),
-    Shell(),
     WebFetch(),
+    Shell(),
     Recall(xdg.memory, xdg.config / "SKETCHPAD.md"),
     LoadMemory(xdg.memory),
     LoadSkill(skills),
