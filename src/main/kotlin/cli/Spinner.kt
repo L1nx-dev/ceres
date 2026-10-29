@@ -1,8 +1,8 @@
 package ceres.cli
 
 import java.io.PrintStream
-import ceres.*
-import ceres.cli.Ansi
+import ceres.cli.*
+import ceres.core.*
 import org.jline.terminal.*
 
 object Term {
@@ -18,7 +18,7 @@ class Spinner(
 ) {
   private val label = label.take(Term.width - 4)
   // private val frames = "◜◝◞◟"
-  private val frames = "⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏"
+  private val frames = "⠋⠙⠹⠸⠼⠴⠦⠧⠏"
   @Volatile private var running = false
   private var thread: Thread? = null
 
@@ -40,9 +40,9 @@ class Spinner(
     thread?.interrupt()
     thread?.join()
     val mark = when {
-      !ok -> "${Ansi.RED}✘"
-      icon != null -> icon
-      else -> "${Ansi.GREEN}✔"
+      !ok -> "${Ansi.RED} "
+      icon != null -> "${Ansi.GREEN}${icon}"
+      else -> "${Ansi.GREEN}󰸞 "
     }
     out.println("${Ansi.RESET}\r\u001B[K${mark}${Ansi.RESET}${Ansi.DIM} $label")
   }

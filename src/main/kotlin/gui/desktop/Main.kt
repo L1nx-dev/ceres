@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.nio.file.Path
+import kotlin.io.path.div
 import ceres.system.*
 import ceres.gui.common.*
 import androidx.compose.runtime.*
@@ -19,11 +21,9 @@ fun main() {
   val xdg = Xdg(seed = false)
   val config = Config(xdg)
   val api = Api(config, xdg)
-  val state = ChatState(api)
-  api.ensureDaemon()
-  api.initChat()
-  state.load(api.history())
+  val state = ChatState(api, Cache(xdg.share / "gui" / "cache"))
   api.listen(state::onEvent)
+  state.connect()
   application {
     Window(onCloseRequest = ::exitApplication, title = "ceres") {
       val field = remember { StarField() }

@@ -1,4 +1,4 @@
-package ceres.cli
+package ceres.core
 
 object Ansi {
   const val RESET = "\u001B[0m"

@@ -111,6 +111,12 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun exists(id: Long) = store.exists(id)
   fun removeChat(id: Long) { store.delete(id); if (id == sid) sid = -1 }
 
+  private fun argsOf(call: ToolCall): JsonObject =
+    runCatching { Json.parseToJsonElement(call.arguments).jsonObject }.getOrDefault(JsonObject(emptyMap()))
+
+  private fun iconOf(call: ToolCall): String =
+    tools[call.name]?.iconFor(argsOf(call)) ?: ""
+
   fun transcript(chat: Long): List<HistoryLine> = buildList {
     for (m in store.load(chat, all = true).filter { it.type == BlockType.CHAT && it.source != Source.SYSTEM }) when (m) {
       is Msg.Text -> when (m.role) {
@@ -120,7 +126,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
       }
       is Msg.ToolCalls -> {
         m.content?.takeIf { it.isNotBlank() }?.let { add(HistoryLine("AGENT", it)) }
-        for (c in m.calls) add(HistoryLine("TOOL", "${tools[c.name]?.icon ?: ""} ${label(c)}"))
+        for (c in m.calls) add(HistoryLine("TOOL", "${iconOf(c)} ${label(c)}"))
       }
       is Msg.ToolResult -> {}
     }
@@ -193,10 +199,9 @@ class Agent(val config: Config, private val xdg: Xdg) {
   private fun runTool(call: ToolCall, emit: (Event) -> Unit): Msg.ToolResult {
     val tool = tools[call.name]
       ?: return Msg.ToolResult(call.id, "error: unknown tool ${call.name}", ok = false)
-    emit(Event.ToolStart(call.id, label(call), tool.icon ?: ""))
-    val result = runCatching {
-      tool.run(Json.parseToJsonElement(call.arguments).jsonObject, ctx)
-    }.getOrElse { "error: ${it.message}" }
+    val args = argsOf(call)
+    emit(Event.ToolStart(call.id, label(call), tool.iconFor(args) ?: ""))
+    val result = runCatching { tool.run(args, ctx) }.getOrElse { "error: ${it.message}" }
     val ok = !result.startsWith("error:")
     emit(Event.ToolEnd(call.id, ok, result))
     if (ok) remember(result)
