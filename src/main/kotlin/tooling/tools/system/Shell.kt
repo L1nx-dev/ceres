@@ -3,7 +3,6 @@ package ceres.tools
 import kotlinx.serialization.json.*
 
 class Shell : Tool {
-  // override val icon get() = "🦪"
   override val def = ToolDefinition(
     name = "shell",
     description = "Run a shell command in a sandbox. Do not use for web scraping.",
@@ -61,7 +60,7 @@ class Shell : Tool {
   private val ws = Regex("""\s+""")
 
   override fun iconFor(args: JsonObject): String {
-    val cmd = args["command"]?.jsonPrimitive?.contentOrNull ?: return "🦪"
+    val cmd = args["command"]?.jsonPrimitive?.contentOrNull ?: return "🦪 "
     for (segment in cmd.split(splitter)) {
       val parts = segment.trim().split(ws, limit = 2)
       val name = parts[0]
@@ -69,7 +68,7 @@ class Shell : Tool {
       rules.firstOrNull { it.cmd == name && (it.args?.containsMatchIn(rest) ?: true) }
         ?.let { return it.icon }
     }
-    return "🦪"
+    return "🦪 "
   }
 
   override fun run(args: JsonObject, ctx: ToolContext): String {
