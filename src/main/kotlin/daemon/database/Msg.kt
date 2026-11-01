@@ -35,6 +35,13 @@ sealed class Msg {
     override val ref: String? = null,
   ) : Msg()
  
+  data class Image(
+    val path: String,
+    override val type: BlockType = BlockType.CHAT,
+    override val source: Source = Source.USER,
+    override val ref: String? = null,
+  ) : Msg()
+
   data class ToolResult(
     val callId: String,
     val content: String,
@@ -42,6 +49,7 @@ sealed class Msg {
     override val type: BlockType = BlockType.CHAT,
     override val source: Source = Source.TOOL,
     override val ref: String? = null,
+    val images: List<String> = emptyList(),
   ) : Msg()
 }
 

@@ -11,6 +11,7 @@ import ceres.main.Msg
 import java.nio.file.Path
 import kotlin.io.path.div
 import java.nio.file.StandardCopyOption
+import kotlinx.serialization.json.*
 
 data class ToolDefinition(val name: String, val description: String, val parameters: JsonObject)
 
@@ -21,6 +22,7 @@ class ToolContext(
   val ask: (List<Msg>) -> String
 ) {
   var cancel: Cancel? = null
+  private val pendingImages = mutableListOf<String>()
 
   fun resolve(rel: String): Path {
     val p = root.resolve(rel).normalize()
@@ -30,6 +32,15 @@ class ToolContext(
     require(probe.toRealPath().startsWith(root)) { "path outside workspace" }
     return p
   }
+
+  fun attach(rel: String): String {
+    val p = resolve(rel)
+    require(Files.isRegularFile(p) && Images.isImage(p.fileName.toString())) { "not an image file: $rel" }
+    pendingImages += root.relativize(p).toString()
+    return "image attached: $rel"
+  }
+  fun drainImages(): List<String> = pendingImages.toList().also { pendingImages.clear() }
+
   fun exec(argv: List<String>, stdin: String?, timeoutSec: Long): String {
     val bwrap = listOf(
       "bwrap",
@@ -57,6 +68,7 @@ class ToolContext(
       "--ro-bind", "/etc/localtime", "/etc/localtime",
       "--",
     )
+
     val p = ProcessBuilder(bwrap + argv).redirectErrorStream(true).start()
     cancel?.setHook { p.destroyForcibly() }
     try {
@@ -94,6 +106,7 @@ class Tools(xdg: Xdg) {
     WebSearch(),
     WebFetch(),
     Shell(),
+    LoadImage(),
     Recall(xdg.memory, xdg.config / "SKETCHPAD.md"),
     LoadMemory(xdg.memory),
     LoadSkill(skills),

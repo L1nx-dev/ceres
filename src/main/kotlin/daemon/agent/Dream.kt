@@ -25,7 +25,7 @@ object MemoryIndex {
 }
 
 class Dreamer(config: Config, private val xdg: Xdg) {
-  private val llm = ApiV1(config)
+  private val llm: ApiV1 = ApiV1(config) { rel -> runCatching { Images.dataUrl(ctx.resolve(rel)) }.getOrNull() }
   private val seen = mutableSetOf<String>()
   private val ctx = ToolContext(
     root = xdg.memory.toRealPath(),

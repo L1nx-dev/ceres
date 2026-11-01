@@ -12,7 +12,6 @@ import ceres.core.*
 
 data class Hit(val sessionId: Long, val messageId: Long, val snippet: String)
 
-/** All SQL lives here. One connection, every method synchronized. */
 class Store(path: Path) : AutoCloseable {
   private val db: Connection
 
@@ -35,7 +34,6 @@ class Store(path: Path) : AutoCloseable {
     if (version < 1) inTransaction {
       exec("""CREATE TABLE sessions(
         id INTEGER PRIMARY KEY,
-        name TEXT,
         started_at TEXT NOT NULL)""")
       exec("""CREATE TABLE messages(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,7 +168,13 @@ class Store(path: Path) : AutoCloseable {
           val msg: Msg = when (val kind = rs.getString("kind")) {
             "text" -> Msg.Text(Role.valueOf(rs.getString("role")), rs.getString("content"), type, source, ref)
             "tool_calls" -> Msg.ToolCalls(callsFromJson(rs.getString("calls_json")), rs.getString("content"), type, source, ref)
-            "tool_result" -> Msg.ToolResult(rs.getString("call_id"), rs.getString("content"), rs.getInt("ok") == 1, type, source, ref)
+            "image" -> Msg.Image(rs.getString("content"), type, source, ref)
+            "tool_result" -> Msg.ToolResult(
+              rs.getString("call_id"), rs.getString("content"), rs.getInt("ok") == 1, type, source, ref,
+              images = rs.getString("calls_json")
+                ?.let { Json.parseToJsonElement(it).jsonArray.map { e -> e.jsonPrimitive.content } }
+                ?: emptyList(),
+            )
             else -> error("unknown message kind: $kind")
           }
           msg.id = rs.getLong("id")
@@ -195,7 +199,11 @@ class Store(path: Path) : AutoCloseable {
     when (msg) {
       is Msg.Text -> { kind = "text"; role = msg.role.name; content = msg.content }
       is Msg.ToolCalls -> { kind = "tool_calls"; content = msg.content; calls = callsToJson(msg.calls) }
-      is Msg.ToolResult -> { kind = "tool_result"; callId = msg.callId; content = msg.content; ok = msg.ok }
+      is Msg.Image -> { kind = "image"; role = "USER"; content = msg.path }
+      is Msg.ToolResult -> {
+        kind = "tool_result"; callId = msg.callId; content = msg.content; ok = msg.ok
+        if (msg.images.isNotEmpty()) calls = buildJsonArray { msg.images.forEach { add(it) } }.toString()
+      }
     }
     db.prepareStatement(
       """INSERT INTO messages(session_id, kind, role, content, call_id, calls_json, ok,

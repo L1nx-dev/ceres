@@ -15,7 +15,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun resolveChat(ref: String) = store.resolve(ref)
   fun chatByName(name: String) = store.byName(name)
   fun renameChat(id: Long, name: String) = store.rename(id, name)
-  private val llm = ApiV1(config)
+  private val llm: ApiV1 = ApiV1(config) { rel -> runCatching { Images.dataUrl(ctx.resolve(rel)) }.getOrNull() }
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
 
   private val seen = mutableSetOf<String>()
@@ -25,7 +25,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
   }
 
 
-  private val ctx = ToolContext(
+  private val ctx: ToolContext = ToolContext(
     root = Path.of(config.workDir).toRealPath(),
     config = config,
     seen = seen,
@@ -129,6 +129,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
         for (c in m.calls) add(HistoryLine("TOOL", "${iconOf(c)} ${label(c)}"))
       }
       is Msg.ToolResult -> {}
+      is Msg.Image -> if (m.source == Source.USER) add(HistoryLine("USER", "[image] ${m.path.substringAfterLast('/')}"))
     }
   }
 
@@ -140,6 +141,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
         record(Msg.Text(Role.USER,
           "SYSTEM: new files:\n" + files.joinToString("\n") { "./mnt/share/$it" },
           source = Source.SYSTEM))
+      files.filter(Images::isImage).forEach { record(Msg.Image("mnt/share/$it")) }
       runLoop(input, cancel, emit)
     } finally { running.set(false) }
   }
@@ -205,6 +207,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
     val ok = !result.startsWith("error:")
     emit(Event.ToolEnd(call.id, ok, result))
     if (ok) remember(result)
-    return Msg.ToolResult(call.id, result, ok = ok, source = tool.source)
+    val pending = ctx.drainImages()
+    return Msg.ToolResult(call.id, result, ok = ok, source = tool.source, images = if (ok) pending else emptyList())
   }
 }

@@ -7,6 +7,7 @@ import kotlinx.serialization.json.*
 import ceres.system.*
 import ceres.core.*
 
+
 import ceres.tools.ToolDefinition
 
 data class Reply(
@@ -15,11 +16,21 @@ data class Reply(
   val toolCalls: List<ToolCall>?,
 )
 
-class ApiV1(val config: Config) {
-  val client = HttpClient.newHttpClient()
+class ApiV1(val config: Config, private val imageUrl: (String) -> String?) {
+  val client: HttpClient = HttpClient.newHttpClient()
 
-  private fun body(messages: List<Msg>, tools: List<ToolDefinition>, think: Boolean,
-                   model: String, stream: Boolean): JsonObject = buildJsonObject {
+  private fun JsonObjectBuilder.imagePart(path: String) {
+    val url = imageUrl(path)
+    if (url == null) { put("type", "text"); put("text", "[image unavailable: $path]") }
+    else { put("type", "image_url"); putJsonObject("image_url") { put("url", url) } }
+  }
+
+  private fun body(messages: List<Msg>,
+    tools: List<ToolDefinition>,
+    think: Boolean,
+    model: String,
+    stream: Boolean
+  ): JsonObject = buildJsonObject {
     put("model", model)
     if (stream) {
       put("stream", true)
@@ -50,10 +61,18 @@ class ApiV1(val config: Config) {
                 }
               }
             }
+            is Msg.Image -> {
+              put("role", "user")
+              putJsonArray("content") { addJsonObject { imagePart(msg.path) } }
+            }
             is Msg.ToolResult -> {
               put("role", "tool")
               put("tool_call_id", msg.callId)
-              put("content", msg.content)
+              if (msg.images.isEmpty()) put("content", msg.content)
+              else putJsonArray("content") {
+                addJsonObject { put("type", "text"); put("text", msg.content) }
+                for (p in msg.images) addJsonObject { imagePart(p) }
+              }
             }
           }
         }
@@ -123,8 +142,8 @@ class ApiV1(val config: Config) {
       .header("Content-Type", "application/json")
       .timeout(Duration.ofSeconds(config.timeout))
     if (config.apiKey.isNotBlank()) builder.header("Authorization", "Bearer ${config.apiKey}")
-    val req = builder.POST(HttpRequest.BodyPublishers.ofString(
-      body(messages, tools, true, config.model, true).toString())).build()
+    val json = body(messages, tools, true, config.model, true)
+    val req = builder.POST(HttpRequest.BodyPublishers.ofString(json.toString())).build()
 
     val res = client.send(req, HttpResponse.BodyHandlers.ofInputStream())
     check(res.statusCode() == 200) { "HTTP ${res.statusCode()}: ${res.body().readBytes().decodeToString()}" }
