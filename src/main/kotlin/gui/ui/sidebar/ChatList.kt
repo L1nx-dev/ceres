@@ -1,45 +1,51 @@
 package ceres.gui.common
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 
 @Composable
-fun ChatList(state: ChatState, modifier: Modifier = Modifier) {
+fun ChatList(
+  chats: List<ChatInfo>,
+  current: Long,
+  onSelect: (Long) -> Unit,
+  onRename: (ChatInfo, String) -> Unit,
+  onRemove: (Long) -> Unit,
+  modifier: Modifier = Modifier,
+) {
   var renaming by remember { mutableStateOf<ChatInfo?>(null) }
-  var draft by remember { mutableStateOf("") }
+  val sorted = remember(chats) { chats.sortedByDescending { it.updated } }
 
   LazyColumn(modifier) {
-    items(state.chats.sortedByDescending { it.updated }, key = { it.id }) { c ->
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-          (if (c.id == state.current) "● " else "") + (c.name ?: "chat ${c.id}"),
-          Modifier.weight(1f).clickable { state.select(c.id) }.padding(8.dp),
-        )
-        TextButton(onClick = { draft = c.name ?: ""; renaming = c }) { Text("✎") }
-        if (c.id != state.current)
-          TextButton(onClick = { state.commandOn(state.current, "/chat remove ${c.id}") }) { Text("✕") }
-      }
+    items(sorted, key = { it.id }) { c ->
+      ChatEntry(
+        chat = c,
+        selected = c.id == current,
+        onSelect = { onSelect(c.id) },
+        onRename = { renaming = c },
+        onRemove = { onRemove(c.id) },
+      )
     }
   }
 
   renaming?.let { c ->
-    AlertDialog(
-      onDismissRequest = { renaming = null },
-      title = { Text("Rename") },
-      text = { OutlinedTextField(draft, { draft = it }, singleLine = true) },
-      confirmButton = {
-        TextButton(onClick = {
-          state.commandOn(state.current, "/chat rename ${c.id} ${draft.trim()}")
-          renaming = null
-        }) { Text("OK") }
-      },
-      dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+    RenameDialog(
+      initial = c.name ?: "",
+      onConfirm = { onRename(c, it.trim()); renaming = null },
+      onDismiss = { renaming = null },
     )
   }
+}
+
+@Composable
+private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+  var draft by remember { mutableStateOf(initial) }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Rename") },
+    text = { OutlinedTextField(draft, { draft = it }, singleLine = true) },
+    confirmButton = { TextButton(onClick = { onConfirm(draft) }) { Text("OK") } },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+  )
 }
