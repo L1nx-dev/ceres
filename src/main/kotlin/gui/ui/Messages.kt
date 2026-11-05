@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import com.mikepenz.markdown.m3.*
+import com.mikepenz.markdown.model.rememberMarkdownState
 import com.mikepenz.markdown.model.rememberStreamingMarkdownState
 
 @Composable
@@ -52,20 +53,29 @@ fun MessageRow(line: Line) {
         Text(line.text, Modifier.padding(12.dp))
       }
     }
+
+    // LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
+    //   GlassPanel(Modifier.widthIn(max = 900.dp), blur = 12.dp) {
+    //     // Text(line.text, Modifier.padding(12.dp))
+    //     val md = rememberStreamingMarkdownState()
+    //     var fed by remember { mutableIntStateOf(0) }
+    //     LaunchedEffect(line.text) {
+    //       if (line.text.length > fed) {
+    //         md.append(line.text.substring(fed))
+    //         fed = line.text.length
+    //       }
+    //     }
+    //     Markdown(streamingMarkdownState = md, modifier = Modifier.padding(12.dp))
+    //   }
+    // }
+
     LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
       GlassPanel(Modifier.widthIn(max = 900.dp), blur = 12.dp) {
-        // Text(line.text, Modifier.padding(12.dp))
-        val md = rememberStreamingMarkdownState()
-        var fed by remember { mutableIntStateOf(0) }
-        LaunchedEffect(line.text) {
-          if (line.text.length > fed) {
-            md.append(line.text.substring(fed))
-            fed = line.text.length
-          }
-        }
-        Markdown(streamingMarkdownState = md, modifier = Modifier.padding(12.dp))
+        val parsed = rememberMarkdownState(line.text, retainState = true, immediate = true)
+        Markdown(parsed, modifier = Modifier.padding(12.dp))
       }
     }
+
     LineRole.TOOL -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
       Text(
         line.text,
@@ -74,6 +84,7 @@ fun MessageRow(line: Line) {
         fontSize = 12.sp,
       )
     }
+
     LineRole.ERROR -> Box(Modifier.fillMaxWidth(), Alignment.Center) {
       GlassPanel(Modifier.fillMaxWidth().widthIn(max = 640.dp), blur = 0.dp, tint = Color(0x88802020)) {
         Text(line.text, Modifier.padding(12.dp))
