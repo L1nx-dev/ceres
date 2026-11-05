@@ -67,12 +67,12 @@ class Api(private val config: Config, xdg: Xdg) : ChatApi {
       .exceptionally { onReject(it.message ?: "request failed"); null }
   }
 
-  override fun command(text: String): String {
+  override fun command(id: Long, text: String): String {
     val r = http.send(
-      req("/command?chat=$chat").timeout(java.time.Duration.ofMinutes(10))
+      req("/command?chat=$id").timeout(java.time.Duration.ofMinutes(10))
         .POST(HttpRequest.BodyPublishers.ofString(text)).build(),
       HttpResponse.BodyHandlers.ofString())
-    r.headers().firstValue("X-Chat").ifPresent { select(it.toLong()) }
+    if (id == chat) r.headers().firstValue("X-Chat").ifPresent { select(it.toLong()) }
     return r.body()
   }
 

@@ -13,7 +13,7 @@ data class ChatInfo(val id: Long, val name: String?, val updated: Long = 0)
 interface ChatApi {
   val chat: Long
   fun prompt(text: String, files: List<String>, onReject: (String) -> Unit)
-  fun command(text: String): String
+  fun command(id: Long, text: String): String
   fun upload(file: Path): String
   fun cancel(); fun history(id: Long): List<HistoryLine>
   fun chats(): List<ChatInfo>; fun create(name: String?): Long; fun select(id: Long)
@@ -69,7 +69,7 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
 
   var current by mutableStateOf(api.chat)
     private set
-  var busyChat by mutableStateOf<Long?>(null)   // the chat a run is streaming into
+  var busyChat by mutableStateOf<Long?>(null)
     private set
   var online by mutableStateOf(false)
     private set
@@ -108,7 +108,7 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
         .onSuccess { h ->
           online = true
           val v = view(id)
-          if (busyChat != id || v.lines.isEmpty()) v.load(h)   // don't clobber live lines
+          if (busyChat != id || v.lines.isEmpty()) v.load(h)
           cache.save(id, h)
         }
         .onFailure {
@@ -125,7 +125,7 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
       .onFailure { view(current).add(LineRole.ERROR, "error: ${it.message}") }
   }
 
-  fun attach(file: Path) { pending += api.upload(file) }   // call off the UI thread
+  fun attach(file: Path) { pending += api.upload(file) }
 
   fun send(text: String) {
     if (busy) return
@@ -140,9 +140,24 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
     val id = current
     view(id).add(LineRole.USER, text)
     thread(isDaemon = true) {
-      val out = runCatching { api.command(text) }.getOrElse { "error: ${it.message}" }
+      val out = runCatching { api.command(id, text) }.getOrElse { "error: ${it.message}" }
       if (api.chat != id) select(api.chat)
       view(api.chat).add(LineRole.AGENT, out)
+    }
+  }
+
+  var notice by mutableStateOf<String?>(null)
+    private set
+
+  fun clearNotice() { notice = null }
+
+  fun commandOn(id: Long, text: String) {
+    if (busy) return
+    thread(isDaemon = true) {
+      notice = runCatching { api.command(id, text) }.getOrElse { "error: ${it.message}" }
+      val list = runCatching { api.chats() }.getOrNull() ?: return@thread
+      chats = list; cache.saveChats(list)
+      if (list.none { it.id == current }) list.firstOrNull()?.let { select(it.id) }
     }
   }
 

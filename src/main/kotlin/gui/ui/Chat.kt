@@ -1,5 +1,6 @@
 package ceres.gui.common
 
+import androidx.compose.foundation.clickable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,9 +19,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 @Composable
-fun Chat(state: ChatState) {
+fun Chat(state: ChatState, modifier: Modifier = Modifier) {
   val listState = rememberLazyListState()
-  // val coroutineScope = rememberCoroutineScope()
   var isInputExpanded by remember { mutableStateOf(false) }
 
   val showScrollToBottomButton by remember {
@@ -29,7 +29,7 @@ fun Chat(state: ChatState) {
 
   val needsFade = showScrollToBottomButton || isInputExpanded
 
-  Box(Modifier.fillMaxSize()) {
+  Box(modifier.fillMaxSize()) {
     Box(
       modifier = Modifier
         .align(Alignment.TopCenter)
@@ -57,11 +57,13 @@ fun Chat(state: ChatState) {
           } else mod
         }
     ) {
-      MessageList(
-        state.lines,
-        listState = listState,
-        modifier = Modifier.fillMaxSize()
-      )
+      key(state.current) {
+        MessageList(
+          state.lines,
+          listState = listState,
+          modifier = Modifier.fillMaxSize()
+        )
+      }
     }
     
     Box(
@@ -76,6 +78,13 @@ fun Chat(state: ChatState) {
         showScrollToBottomButton = showScrollToBottomButton,
         state = state,
         listState = listState
+      )
+    }
+
+    state.notice?.let { n ->
+      Text(
+        n,
+        Modifier.align(Alignment.TopCenter).clickable { state.clearNotice() }.padding(8.dp),
       )
     }
 
