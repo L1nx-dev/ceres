@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.toSize
@@ -14,6 +13,7 @@ import org.jetbrains.skia.Rect
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.skiaCanvas
 
 class StarField {
   val builder = RuntimeShaderBuilder(
@@ -29,7 +29,7 @@ class StarField {
     val paint = Paint()
     try {
       paint.shader = shader
-      scope.drawContext.canvas.nativeCanvas
+      scope.drawContext.canvas.skiaCanvas
         .drawRect(Rect.makeWH(size.width, size.height), paint)
     } finally {
       paint.close()
@@ -69,7 +69,7 @@ fun StarBackground(
     try {
       paint.shader = shader
 
-      drawContext.canvas.nativeCanvas.drawRect(
+      drawContext.canvas.skiaCanvas.drawRect(
         Rect.makeWH(size.width, size.height),
         paint
       )

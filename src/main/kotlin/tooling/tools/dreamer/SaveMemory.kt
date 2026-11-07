@@ -23,7 +23,7 @@ class SaveMemory : Tool {
   )
 
   override fun run(args: JsonObject, ctx: ToolContext): String {
-    val rel = args["path"]?.jsonPrimitive?.contentOrNull ?: return "error: missing 'path'"
+    val rel = memName(args["path"]?.jsonPrimitive?.contentOrNull ?: return "error: missing 'path'")
     val old = args["old_str"]?.jsonPrimitive?.contentOrNull ?: ""
     val new = args["new_str"]?.jsonPrimitive?.contentOrNull ?: return "error: missing 'new_str'"
     val desc = args["description"]?.jsonPrimitive?.contentOrNull

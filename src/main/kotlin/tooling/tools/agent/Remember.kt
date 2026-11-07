@@ -41,7 +41,10 @@ class Remember(private val file: Path) : Tool {
     val content = args["content"]?.jsonPrimitive?.contentOrNull?.trim()
       ?: return "error: missing 'content'"
     if (content.isEmpty()) return "error: empty note"
-    val entry = "## ${LocalDateTime.now().withNano(0)}\n$content\n\n"
+    val headerLike = Regex("(?m)^(#+ )")
+
+    val safe = content.replace(headerLike, "\\\\$1")
+    val entry = "## ${LocalDateTime.now().withNano(0)}\n$safe\n\n"
     Files.writeString(file, entry, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     return "ok: noted"
   }

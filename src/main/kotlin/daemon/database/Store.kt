@@ -33,7 +33,8 @@ class Store(path: Path) : AutoCloseable {
     }
     if (version < 1) inTransaction {
       exec("""CREATE TABLE sessions(
-        id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
         started_at TEXT NOT NULL)""")
       exec("""CREATE TABLE messages(
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -15,6 +15,8 @@ import kotlinx.serialization.json.*
 
 data class ToolDefinition(val name: String, val description: String, val parameters: JsonObject)
 
+internal fun memName(s: String) = s.trim().removeSuffix(".md")
+
 class ToolContext(
   val root: Path,
   val config: Config,

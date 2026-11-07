@@ -154,12 +154,13 @@ class ApiV1(val config: Config, private val imageUrl: (String) -> String?) {
     val names = sortedMapOf<Int, String>()
     val args = sortedMapOf<Int, StringBuilder>()
     var tokens: Int? = null
+    var finished = false
 
     res.body().bufferedReader().use { r ->
       for (line in r.lineSequence()) {
         if (!line.startsWith("data:")) continue
         val data = line.removePrefix("data:").trim()
-        if (data == "[DONE]") break
+        if (data == "[DONE]") { finished = true; break }
         val root = Json.parseToJsonElement(data).jsonObject
         root["usage"]?.jsonObject?.get("prompt_tokens")?.jsonPrimitive?.intOrNull?.let { tokens = it }
         val delta = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject
@@ -177,6 +178,7 @@ class ApiV1(val config: Config, private val imageUrl: (String) -> String?) {
         }
       }
     }
+    if (!finished && !cancel.cancelled) error("stream ended before [DONE]")
     cancel.setHook(null)
     val calls = ids.keys.map { ToolCall(ids[it]!!, names[it] ?: "", args[it]?.toString() ?: "{}") }
     return Reply(text.toString().ifEmpty { null }, tokens, calls.ifEmpty { null })

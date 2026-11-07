@@ -66,7 +66,7 @@ class LoadMemory(private val dir: Path) : Tool {
   )
 
   override fun run(args: JsonObject, ctx: ToolContext): String {
-    val name = args["name"]?.jsonPrimitive?.contentOrNull ?: return "error: missing 'name'"
+    val name = memName(args["name"]?.jsonPrimitive?.contentOrNull ?: return "error: missing 'name'")
     val p = dir.resolve(name + ".md").normalize()
     if (!p.startsWith(dir) || !Files.isRegularFile(p)) return "error: no such memory file: $name"
     return Files.readString(p).take(16_000)

@@ -77,17 +77,25 @@ class WebFetch : Tool {
     }
   }
 
+  private fun blocked(a: InetAddress): Boolean {
+    if (a.isLoopbackAddress || a.isSiteLocalAddress || a.isLinkLocalAddress ||
+        a.isAnyLocalAddress || a.isMulticastAddress) return true
+    val b = a.address
+    return when (b.size) {
+      4 -> (b[0].toInt() and 0xFF) == 100 && (b[1].toInt() and 0xC0) == 64   // 100.64.0.0/10
+      16 -> (b[0].toInt() and 0xFE) == 0xFC                                  // fc00::/7
+      else -> false
+    }
+  }
+
   private fun fetch(start: String): Triple<ByteArray, String, String>? {
     var url = start
     repeat(5) {
       val uri = URI.create(url)
       require(uri.scheme in setOf("http", "https")) { "only http(s) allowed" }
       val host = uri.host ?: error("bad url")
-      for (a in InetAddress.getAllByName(host)) {
-        require(!(a.isLoopbackAddress || a.isSiteLocalAddress || a.isLinkLocalAddress || a.isAnyLocalAddress)) {
-          "blocked: $host resolves to a private address"
-        }
-      }
+      for (a in InetAddress.getAllByName(host))
+        require(!blocked(a)) { "blocked: $host resolves to a private address" }
       val req = HttpRequest.newBuilder(uri)
         .header("User-Agent", "ceres-agent/1.0")
         .timeout(Duration.ofSeconds(15)).GET().build()
