@@ -59,3 +59,17 @@ tasks.register("inspectDist") {
 tasks.named<Sync>("installDist") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+
+tasks.test {
+    useJUnitPlatform()
+    environment("XDG_CONFIG_HOME", layout.buildDirectory.dir("test-xdg/config").get().asFile.path)
+    environment("XDG_DATA_HOME", layout.buildDirectory.dir("test-xdg/data").get().asFile.path)
+    testLogging {
+        events("failed", "skipped")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({ d, r ->
+        if (d.parent == null) println("tests: ${r.testCount}  passed: ${r.successfulTestCount}  failed: ${r.failedTestCount}  skipped: ${r.skippedTestCount}")
+    }))
+}
