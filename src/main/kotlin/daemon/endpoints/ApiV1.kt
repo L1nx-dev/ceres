@@ -149,6 +149,16 @@ class ApiV1(val config: Config, private val imageUrl: (String) -> String?) {
     check(res.statusCode() == 200) { "HTTP ${res.statusCode()}: ${res.body().readBytes().decodeToString()}" }
     cancel.setHook { runCatching { res.body().close() } }
 
+    val last = java.util.concurrent.atomic.AtomicLong(System.nanoTime())
+    val stalled = java.util.concurrent.atomic.AtomicBoolean(false)
+    val idleNs = Duration.ofSeconds(config.timeout).toNanos()
+    val dog = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r ->
+      Thread(r, "stream-watchdog").apply { isDaemon = true }
+    }
+    dog.scheduleAtFixedRate({
+      if (System.nanoTime() - last.get() > idleNs) { stalled.set(true); runCatching { res.body().close() } }
+    }, 1, 1, java.util.concurrent.TimeUnit.SECONDS)
+
     val text = StringBuilder()
     val ids = sortedMapOf<Int, String>()
     val names = sortedMapOf<Int, String>()
@@ -156,11 +166,13 @@ class ApiV1(val config: Config, private val imageUrl: (String) -> String?) {
     var tokens: Int? = null
     var finished = false
 
-    res.body().bufferedReader().use { r ->
-      for (line in r.lineSequence()) {
-        if (!line.startsWith("data:")) continue
-        val data = line.removePrefix("data:").trim()
-        if (data == "[DONE]") { finished = true; break }
+    try {
+      res.body().bufferedReader().use { r ->
+        for (line in r.lineSequence()) {
+          last.set(System.nanoTime())
+          if (!line.startsWith("data:")) continue
+          val data = line.removePrefix("data:").trim()
+          if (data == "[DONE]") { finished = true; break }
         val root = Json.parseToJsonElement(data).jsonObject
         root["usage"]?.jsonObject?.get("prompt_tokens")?.jsonPrimitive?.intOrNull?.let { tokens = it }
         val delta = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject
@@ -174,13 +186,18 @@ class ApiV1(val config: Config, private val imageUrl: (String) -> String?) {
             f["name"]?.jsonPrimitive?.contentOrNull?.let { names[i] = it }
             f["arguments"]?.jsonPrimitive?.contentOrNull
               ?.let { args.getOrPut(i) { StringBuilder() }.append(it) }
+            }
           }
         }
       }
-    }
+    } catch (e: java.io.IOException) {
+      if (!stalled.get()) throw e
+    } finally { dog.shutdownNow() }
+
+    if (stalled.get()) error("no data from the model for ${config.timeout}s")
     if (!finished && !cancel.cancelled) error("stream ended before [DONE]")
     cancel.setHook(null)
     val calls = ids.keys.map { ToolCall(ids[it]!!, names[it] ?: "", args[it]?.toString() ?: "{}") }
     return Reply(text.toString().ifEmpty { null }, tokens, calls.ifEmpty { null })
   }
-}
+} // TODO: make this file readable
