@@ -31,9 +31,9 @@ class Client(private val config: Config, private val xdg: Xdg) {
     error("daemon did not start")
   }
 
-  fun create(): Long {
-    val r = http.send(req("/chat")
-      .POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),
+  fun create(name: String? = null): Long {
+    val q = if (name == null) "" else "?name=" + java.net.URLEncoder.encode(name, Charsets.UTF_8)
+    val r = http.send(req("/chat$q").POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),
       java.net.http.HttpResponse.BodyHandlers.ofString())
     check(r.statusCode() == 200) { "HTTP ${r.statusCode()} ${r.body()}" }
     return r.body().trim().toLong()
@@ -41,14 +41,13 @@ class Client(private val config: Config, private val xdg: Xdg) {
  
   fun events(lastId: Long): Stream<String> = http.send(
     req("/events").header("Last-Event-ID", lastId.toString()).GET().build(),
-    java.net.http.HttpResponse.BodyHandlers.ofLines()).body()
+  java.net.http.HttpResponse.BodyHandlers.ofLines()).body()
 
-    fun prompt(text: String) {
-      val r = http.send(
-        req("/prompt").POST(java.net.http.HttpRequest.BodyPublishers.ofString(text)).build(),
-        java.net.http.HttpResponse.BodyHandlers.ofString())
-      check(r.statusCode() == 202) { "HTTP ${r.statusCode()} ${r.body()}" }
-    }
+  fun prompt(chat: Long, text: String) {
+    val r = http.send(req("/prompt?chat=$chat").POST(java.net.http.HttpRequest.BodyPublishers.ofString(text)).build(),
+      java.net.http.HttpResponse.BodyHandlers.ofString())
+    check(r.statusCode() == 202) { "HTTP ${r.statusCode()} ${r.body()}" }
+  }
 
   fun chats(): List<Pair<Long, String?>> {
     val r = http.send(req("/chats").GET().build(),
@@ -75,30 +74,24 @@ class Client(private val config: Config, private val xdg: Xdg) {
 fun promptOnce(config: Config, xdg: Xdg, chat: String, text: String) {
   val client = Client(config, xdg)
   client.ensureDaemon()
+  val id = client.chats().firstOrNull { it.second == chat || it.first.toString() == chat }?.first
+    ?: client.create(chat)
 
-  val chatId = client.create()
-  val sw = client.command("/switch $chat", chatId)
-  if (sw.startsWith("error")) { System.err.println(sw); exitProcess(2) }
-
+  val lines = client.events(-1)
   val done = java.util.concurrent.CountDownLatch(1)
   var result: Event = Event.Cancelled
-
   thread(isDaemon = true) {
-    val res = client.events(-1)
-    res.forEach { line ->
-      if (line.startsWith("data:")) {
-        val e = decode(line.substring(5).trim())
-        when (e) {
-          is Event.Delta -> { print(e.text); System.out.flush() }
-          is Event.Done, is Event.Error, Event.Cancelled -> { result = e; done.countDown() }
-          else -> {}
-        }
+    lines.forEach { line ->
+      if (line.startsWith("data:")) when (val e = decode(line.substring(5).trim())) {
+        is Event.Delta -> { print(e.text); System.out.flush() }
+        is Event.Done, is Event.Error, Event.Cancelled -> { result = e; done.countDown() }
+        else -> {}
       }
     }
   }
-  Thread.sleep(100) //TODO make this not as shitty
-  client.prompt(text)
+  client.prompt(id, text)
   done.await()
   println()
+  (result as? Event.Error)?.let { System.err.println("error: ${it.message}") }
   exitProcess(if (result is Event.Done) 0 else 1)
 }

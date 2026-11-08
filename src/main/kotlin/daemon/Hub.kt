@@ -20,14 +20,21 @@ class Hub(private val agent: Agent) {
     val c = Cancel()
     synchronized(lock) {
       if (active) return false
-      active = true; seq = 0; buffer.clear(); cancel = c
+      active = true
+      buffer.clear()
+      cancel = c
     }
+
     thread(name = "run") {
-      val emit = { e: Event -> publish(chat, e) }
+      var last: Event? = null
+      val emit = { e: Event ->
+        if (e is Event.Done || e is Event.Error || e === Event.Cancelled) last = e else publish(chat, e)
+      }
       try { agent.prompt(chat, text, files, c, emit) }
-      catch (e: Exception) { emit(Event.Error(e.message ?: "internal error")) }
-      finally { synchronized(lock) { active = false } }
+      catch (e: Exception) { last = Event.Error(e.message ?: "internal error") }
+      finally { synchronized(lock) { active = false; last?.let { publish(chat, it) } } }
     }
+
     return true
   }
 
