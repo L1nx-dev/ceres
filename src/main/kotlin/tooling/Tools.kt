@@ -73,19 +73,29 @@ class ToolContext(
 
     val p = ProcessBuilder(bwrap + argv).redirectErrorStream(true).start()
     cancel?.setHook { p.destroyForcibly() }
+
     try {
-      val out = java.util.concurrent.CompletableFuture.supplyAsync { p.inputStream.readAllBytes() }
+      val out = java.util.concurrent.CompletableFuture.supplyAsync { p.inputStream.readNBytes(16_000) }
       p.outputStream.use { if (stdin != null) it.write(stdin.toByteArray()) }
 
-      if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
+      val bytes = try {
+        out.get(timeoutSec, TimeUnit.SECONDS)
+      } catch (_: java.util.concurrent.TimeoutException) {
         p.destroyForcibly()
         return "error: timeout after ${timeoutSec}s"
       }
-      val text = out.get().decodeToString().take(16_000)
+      val truncated = bytes.size >= 16_000
+      if (truncated) p.destroyForcibly()
+      if (!p.waitFor(5, TimeUnit.SECONDS)) p.destroyForcibly().waitFor()
+
+      val text = bytes.decodeToString()
       if (cancel?.cancelled == true) return "error: cancelled"
+      if (truncated) return "$text\n[output truncated at 16000 bytes, command killed]"
       val code = p.exitValue()
       return if (code == 0) text else "error: exit $code\n$text"
-    } finally {
+    } 
+
+    finally {
       cancel?.setHook(null)
     }
   }
