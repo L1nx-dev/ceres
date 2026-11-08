@@ -66,7 +66,10 @@ class SandboxTest {
   @Test fun stdinIsForwarded() { assertEquals("hello", ctx.exec(listOf("cat"), "hello", 5)) }
 
   @Test fun outputIsCappedAt16000Chars() {
-    assertEquals(16_000, sh("head -c 100000 /dev/zero | tr '\\0' a").length)
+    val out = sh("head -c 100000 /dev/zero | tr '\\0' a")
+    assertTrue(out.startsWith("a".repeat(16_000)))
+    assertTrue(out.endsWith("[output truncated at 16000 bytes, command killed]"))
+    assertEquals(16_003, out.count { it == 'a' })
   }
 
   @Test fun shellToolRunsCommands() {
