@@ -26,8 +26,7 @@ class Remember(private val file: Path) : Tool {
   override val def = ToolDefinition(
     name = "remember",
     description = "Save a note about yourself or the user, their projects, or a decision, to be sorted into long-term memory later. " +
-      "One self-contained fact or idea per call; it must make sense without the conversation."+
-      "Use this tool as often as possible, every message if possible",
+      "One self-contained fact or idea per call; it must make sense without the conversation.",
     parameters = buildJsonObject {
       put("type", "object")
       putJsonObject("properties") {

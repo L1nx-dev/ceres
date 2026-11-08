@@ -54,8 +54,7 @@ class LoadMemory(private val dir: Path) : Tool {
   override val def = ToolDefinition(
     name = "load_memory",
     description = "Load a memory file by its path from the memory index."+
-    "Memories aren't stored in the regular path directory"+
-    "Use this as often as possible.",
+    "Memories aren't stored in the regular path directory",
     parameters = buildJsonObject {
       put("type", "object")
       putJsonObject("properties") {
