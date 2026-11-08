@@ -12,3 +12,7 @@ Currently works with most open-weight models served through llama.cpp, expect is
 - Self improving skills
 - Chat in-line widgets capability
 - Sandbox file system improvements
+
+# Other
+
+Copyright (C) 2026 linx. Licensed under AGPL-3.0-only, see LICENSE.
