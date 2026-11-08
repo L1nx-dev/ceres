@@ -76,7 +76,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
       .joinToString("\n\n")
     println("soul")
 
-    val bootFile = xdg.config / "BOOT.script"
+    val bootFile = xdg.config / "boot.script"
     val shellOut = if (bootFile.exists()) {
       println("boot")
         val cmds = bootFile.readLines()
