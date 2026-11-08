@@ -1,14 +1,14 @@
-## BOOTSTRAPED
-SOUL.md         -> personality, tone
+# Overview
 
-USER.md         -> user preferences
+A **simple** ai harness written in pure kotlin, mostly for personal use.
+Currently works with most open-weight models served through llama.cpp, expect issues with cloud based models with hidden thinking.
 
-MEMORY.md       -> long term memory, facts
+# Roadmap
 
-BOOT.script         -> commands to be executed through the shell tool
-
-
-## NOT BOOTSTRAPED
-SKETCHPAD.md    -> notes for dreaming
-
-CRON.md         -> unique instance per every cron job, in cron/
+- Mobile app
+- Context compression
+- Sub-agents
+- Plugins
+- Self improving skills
+- Chat in-line widgets capability
+- Sandbox file system improvements
