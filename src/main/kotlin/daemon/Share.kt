@@ -13,19 +13,25 @@ class Share(private val root: Path) {
     return p.takeIf { it.startsWith(realRoot) && Files.isRegularFile(it) }
   }
 
-  private fun dirFor(chat: Long) = chat.toString() // hash goes here
+  fun openIn(chat: Long, rel: String): Path? {
+    if (".." in rel.split('/')) return null
+    val d = runCatching { dir(chat).toRealPath() }.getOrNull() ?: return null
+    return open(rel)?.takeIf { it.startsWith(d) }
+  }
+
+  fun dir(chat: Long): Path = root / chat.toString()
 
   fun save(chat: Long, name: String, body: InputStream): String {
     val clean = Path.of(name).fileName?.toString()
       ?.takeIf { it.isNotBlank() && it != ".." && it.none { c -> c.isISOControl() } }
       ?: error("bad name")
-    val dir = (root / dirFor(chat)).createDirectories()
+    val dir = dir(chat).createDirectories()
     val stem = clean.substringBeforeLast('.', clean)
     val ext = clean.substringAfterLast('.', "").let { if (it.isEmpty()) "" else ".$it" }
     var target = dir / clean
     var n = 1
     while (target.exists()) target = dir / "$stem-${n++}$ext"
     Files.copy(body, target)
-    return "${dirFor(chat)}/${target.fileName}"
+    return "$chat/${target.fileName}"
   }
 }

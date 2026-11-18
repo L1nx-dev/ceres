@@ -21,7 +21,8 @@ private const val MAX_UPLOAD = 512L * 1024 * 1024
 class Daemon(
   private val config: Config,
   private val hub: Hub, private val commands: Commands,
-  private val agent: Agent
+  private val agent: Agent,
+  private val share: Share
 ) {
   private val http = HttpServer.create(InetSocketAddress(config.listen, config.port), 0)
 
@@ -31,7 +32,6 @@ class Daemon(
       java.net.URLDecoder.decode(p[0], Charsets.UTF_8) to java.net.URLDecoder.decode(p.getOrElse(1) { "" }, Charsets.UTF_8)
     }
   private fun HttpExchange.chat(): Long? = query()["chat"]?.toLongOrNull()
-  val share = Share(Path.of(config.workDir).resolve("mnt/share").also { it.createDirectories() })
 
   init {
     require(config.token.isNotBlank()) { "token mustn't be empty" }
@@ -91,7 +91,7 @@ class Daemon(
       val chat = q["chat"]?.toLongOrNull() ?: return@route reply(ex, 400, "missing chat")
       if (!agent.exists(chat)) return@route reply(ex, 404, "no such chat")
       val files = (q["files"] ?: "").split('\n').filter { it.isNotBlank() }
-      if (files.any { share.open(it) == null }) return@route reply(ex, 400, "bad file") // upload
+      if (files.any { share.openIn(chat, it) == null }) return@route reply(ex, 400, "bad file")
       reply(ex, if (hub.start(chat, ex.requestBody.readBytes().decodeToString(), files)) 202 else 409)
     }
 
@@ -148,16 +148,18 @@ class Daemon(
   }
 }  
 
-fun runDaemon(config: Config, xdg: Xdg, share: Share) {
-  val agent = Agent(config, xdg)
+fun runDaemon(config: Config, xdg: Xdg) {
+  val share = Share(xdg.uploads)
+  val agent = Agent(config, xdg, share)
   val hub = Hub(agent)
-  val share = Share(Path.of(config.workDir).resolve("mnt/share").also { it.createDirectories() })
   val daemon = Daemon(
     config = config,
     hub = hub,
     commands = Commands(agent, Dreamer(config, xdg)),
     agent = agent,
+    share = share,
   )
+
   Runtime.getRuntime().addShutdownHook(Thread {
     hub.cancel()
     repeat(30) { if (hub.busy) Thread.sleep(100) }

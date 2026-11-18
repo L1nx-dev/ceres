@@ -26,24 +26,33 @@ class ToolContext(
   var cancel: Cancel? = null
   private val pendingImages = mutableListOf<String>()
 
+  var share: Path? = null
+
   fun resolve(rel: String): Path {
     val p = root.resolve(rel).normalize()
     require(p.startsWith(root)) { "path outside workspace" }
-    var probe = p
+    val virt = root.resolve("share")
+    val s = share
+    val (target, base) =
+      if (s != null && p.startsWith(virt)) s.resolve(virt.relativize(p).toString()).normalize() to s
+      else p to root
+    var probe = target
     while (!Files.exists(probe, LinkOption.NOFOLLOW_LINKS)) probe = probe.parent
-    require(probe.toRealPath().startsWith(root)) { "path outside workspace" }
-    return p
+    require(probe.toRealPath().startsWith(base)) { "path outside workspace" }
+    return target
   }
 
   fun attach(rel: String): String {
     val p = resolve(rel)
     require(Files.isRegularFile(p) && Images.isImage(p.fileName.toString())) { "not an image file: $rel" }
-    pendingImages += root.relativize(p).toString()
+    pendingImages += root.relativize(root.resolve(rel).normalize()).toString()
     return "image attached: $rel"
   }
+
   fun drainImages(): List<String> = pendingImages.toList().also { pendingImages.clear() }
 
   fun exec(argv: List<String>, stdin: String?, timeoutSec: Long): String {
+    val shareMount = share?.let { listOf("--bind", it.toString(), "/Ceres/share") } ?: emptyList()
     val bwrap = listOf(
       "bwrap",
       "--unshare-all",
@@ -60,9 +69,10 @@ class ToolContext(
       "--proc", "/proc",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
-      "--bind", root.toString(), "/Ceres", // TODO: make configurable
-      "--chdir", "/Ceres",
       "--tmpfs", "/etc",
+      "--bind", root.toString(), "/Ceres",
+      *shareMount.toTypedArray(),
+      "--chdir", "/Ceres",
       "--ro-bind", "/etc/resolv.conf", "/etc/resolv.conf",
       "--ro-bind", "/etc/ssl", "/etc/ssl",
       "--ro-bind", "/etc/static", "/etc/static",   // NixOS: /etc/ssl, /etc/resolv.conf etc. often symlink into here

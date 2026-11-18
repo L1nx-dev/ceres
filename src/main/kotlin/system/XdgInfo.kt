@@ -22,6 +22,8 @@ class Xdg(seed: Boolean = true) {
   val skills = config / "skills"
   val memory = config / "memory"
 
+  val uploads = share / "uploads"
+
   private data class Resource(val name: String, val targetDir: Path)
 
   private val defaultResources = listOf(
@@ -33,7 +35,7 @@ class Xdg(seed: Boolean = true) {
   )
 
   init {
-    listOf(config, share, skills, memory).forEach { it.createDirectories() }
+    listOf(config, share, skills, memory, uploads).forEach { it.createDirectories() }
     if (seed) defaultResources.forEach { (name, dir) -> copyResourceIfMissing(name, dir) }
   }
 

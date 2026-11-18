@@ -11,7 +11,11 @@ import kotlin.io.path.*
 
 private val LISTING_REF = "startup-listing"
 
-class Agent(val config: Config, private val xdg: Xdg) {
+class Agent(
+  val config: Config,
+  private val xdg: Xdg,
+  private val share: Share
+) {
   fun resolveChat(ref: String) = store.resolve(ref)
   fun chatByName(name: String) = store.byName(name)
   fun renameChat(id: Long, name: String) = store.rename(id, name)
@@ -61,6 +65,7 @@ class Agent(val config: Config, private val xdg: Xdg) {
 
   private fun open(id: Long) {
     sid = id
+    ctx.share = share.dir(id).createDirectories()
     history = store.load(id)
     if (history.isEmpty()) seed()
     syncListing()
@@ -109,7 +114,13 @@ class Agent(val config: Config, private val xdg: Xdg) {
   fun chats(current: Long) = store.sessions(current)
   fun createChat(name: String?): Long = store.newSession(name)
   fun exists(id: Long) = store.exists(id)
-  fun removeChat(id: Long) { store.delete(id); if (id == sid) sid = -1 }
+
+  @OptIn(ExperimentalPathApi::class)
+  fun removeChat(id: Long) {
+    store.delete(id)
+    share.dir(id).takeIf { it.exists() }?.deleteRecursively()
+    if (id == sid) sid = -1
+  }
 
   private fun argsOf(call: ToolCall): JsonObject =
     runCatching { Json.parseToJsonElement(call.arguments).jsonObject }.getOrDefault(JsonObject(emptyMap()))
@@ -139,9 +150,9 @@ class Agent(val config: Config, private val xdg: Xdg) {
       if (chat != sid) open(chat)
       if (files.isNotEmpty())
         record(Msg.Text(Role.USER,
-          "SYSTEM: new files:\n" + files.joinToString("\n") { "./mnt/share/$it" },
+          "SYSTEM: new files:\n" + files.joinToString("\n") { "share/${it.substringAfter('/')}" },
           source = Source.SYSTEM))
-      files.filter(Images::isImage).forEach { record(Msg.Image("mnt/share/$it")) }
+      files.filter(Images::isImage).forEach { record(Msg.Image("share/${it.substringAfter('/')}")) }
       runLoop(input, cancel, emit)
     } finally { running.set(false) }
   }
