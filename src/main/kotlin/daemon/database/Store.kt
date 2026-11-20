@@ -65,6 +65,12 @@ class Store(path: Path) : AutoCloseable {
       END""")
       exec("PRAGMA user_version = 1")
     }
+
+    if (version < 2) inTransaction {
+      exec("DROP INDEX IF EXISTS sessions_name")
+      exec("CREATE INDEX sessions_name ON sessions(name)")
+      exec("PRAGMA user_version = 2")
+    }
   }
 
   private fun exec(sql: String) = db.createStatement().use { it.execute(sql) }
@@ -110,17 +116,19 @@ class Store(path: Path) : AutoCloseable {
     }
 
   @Synchronized
-  fun byName(name: String): Long? =
-    db.prepareStatement("SELECT id FROM sessions WHERE name = ?").use { ps ->
+  fun idsByName(name: String): List<Long> =
+    db.prepareStatement("SELECT id FROM sessions WHERE name = ? ORDER BY id").use { ps ->
       ps.setString(1, name)
-      ps.executeQuery().use { if (it.next()) it.getLong(1) else null }
+      ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.getLong(1)) } }
     }
 
   @Synchronized
-  fun resolve(ref: String): Long? = byName(ref) ?: ref.toLongOrNull()?.takeIf { exists(it) }
+  fun resolve(ref: String): List<Long> =
+    ref.toLongOrNull()?.let { if (exists(it)) listOf(it) else emptyList() } ?: idsByName(ref)
+
 
   @Synchronized
-  fun rename(sid: Long, name: String) {
+  fun rename(sid: Long, name: String?) {
     db.prepareStatement("UPDATE sessions SET name = ? WHERE id = ?").use { ps ->
       ps.setString(1, name); ps.setLong(2, sid); ps.executeUpdate()
     }

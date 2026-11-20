@@ -150,12 +150,13 @@ class Daemon(
 
 fun runDaemon(config: Config, xdg: Xdg) {
   val share = Share(xdg.uploads)
-  val agent = Agent(config, xdg, share)
+  val store = Store(xdg.share / "sessions.db")
+  val agent = Agent(config, xdg, share, store)
   val hub = Hub(agent)
   val daemon = Daemon(
     config = config,
     hub = hub,
-    commands = Commands(agent, Dreamer(config, xdg)),
+    commands = Commands(agent, Dreamer(config, xdg), store),
     agent = agent,
     share = share,
   )
@@ -164,7 +165,9 @@ fun runDaemon(config: Config, xdg: Xdg) {
     hub.cancel()
     repeat(30) { if (hub.busy) Thread.sleep(100) }
     daemon.stop()
+    store.close()
   })
+
   daemon.start()
   println("listening on ${config.listen}:${config.port}")
   Thread.currentThread().join()

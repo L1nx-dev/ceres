@@ -123,6 +123,7 @@ interface Tool {
 class Tools(xdg: Xdg) {
   val skills = Skills(xdg.skills)
   val list = listOf<Tool>(
+    ReadFile(),
     EditFile(),
     MakeFile(),
     WebSearch(),

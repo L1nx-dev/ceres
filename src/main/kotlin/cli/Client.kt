@@ -74,8 +74,15 @@ class Client(private val config: Config, private val xdg: Xdg) {
 fun promptOnce(config: Config, xdg: Xdg, chat: String, text: String) {
   val client = Client(config, xdg)
   client.ensureDaemon()
-  val id = client.chats().firstOrNull { it.second == chat || it.first.toString() == chat }?.first
-    ?: client.create(chat)
+  val matches = client.chats().filter { it.second == chat || it.first.toString() == chat }
+  val id = when (matches.size) {
+    0 -> client.create(chat)
+    1 -> matches[0].first
+    else -> {
+      System.err.println("ambiguous chat \"$chat\": ids ${matches.joinToString { it.first.toString() }}")
+      exitProcess(2)
+    }
+  }
 
   val lines = client.events(-1)
   val done = java.util.concurrent.CountDownLatch(1)

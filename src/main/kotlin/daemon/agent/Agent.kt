@@ -14,11 +14,9 @@ private val LISTING_REF = "startup-listing"
 class Agent(
   val config: Config,
   private val xdg: Xdg,
-  private val share: Share
+  private val share: Share,
+  private val store: Store
 ) {
-  fun resolveChat(ref: String) = store.resolve(ref)
-  fun chatByName(name: String) = store.byName(name)
-  fun renameChat(id: Long, name: String) = store.rename(id, name)
   private val llm: ApiV1 = ApiV1(config) { rel -> runCatching { Images.dataUrl(ctx.resolve(rel)) }.getOrNull() }
   init { require(config.workDir.isNotBlank()) { "workDir mustn't be empty" } }
 
@@ -46,7 +44,6 @@ class Agent(
   private val tools = Tools(xdg).list
   var cancel: Cancel? = null
 
-  private val store = Store(xdg.share / "sessions.db")
   private var sid: Long = 0
   private var history: MutableList<Msg> = mutableListOf()
 
