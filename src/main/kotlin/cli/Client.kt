@@ -74,14 +74,16 @@ class Client(private val config: Config, private val xdg: Xdg) {
 fun promptOnce(config: Config, xdg: Xdg, chat: String, text: String) {
   val client = Client(config, xdg)
   client.ensureDaemon()
+
   val matches = client.chats().filter { it.second == chat || it.first.toString() == chat }
-  val id = when (matches.size) {
-    0 -> client.create(chat)
-    1 -> matches[0].first
-    else -> {
+  val id = when {
+    matches.size > 1 -> {
       System.err.println("ambiguous chat \"$chat\": ids ${matches.joinToString { it.first.toString() }}")
       exitProcess(2)
     }
+    matches.size == 1 -> matches[0].first
+    chat.all { it.isDigit() } -> { System.err.println("no such chat: $chat"); exitProcess(2) }
+    else -> client.create(chat)
   }
 
   val lines = client.events(-1)

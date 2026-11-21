@@ -69,13 +69,13 @@ class Daemon(
     route("/status") { reply(it, 200, "ok") }
 
     route("/events") { ex ->
-      val last = ex.requestHeaders.getFirst("Last-Event-ID")?.toLongOrNull() ?: 0L
-      ex.responseHeaders.add("Content-Type", "text/event-stream")
-      ex.responseHeaders.add("Cache-Control", "no-cache")
-      ex.sendResponseHeaders(200, 0)
-      val out = ex.responseBody
-      val q = hub.subscribe(last)
-      try {
+        val last = ex.requestHeaders.getFirst("Last-Event-ID")?.toLongOrNull() ?: 0L
+        val q = hub.subscribe(last)
+        ex.responseHeaders.add("Content-Type", "text/event-stream")
+        ex.responseHeaders.add("Cache-Control", "no-cache")
+        ex.sendResponseHeaders(200, 0)
+        val out = ex.responseBody
+        try {
         while (true) {
           val item = q.poll(15, TimeUnit.SECONDS)
           val chunk = if (item == null) ": ping\n\n"
