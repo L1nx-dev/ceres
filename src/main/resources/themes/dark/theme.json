@@ -1,0 +1,16 @@
+{
+  "name": "Dark",
+  "dark": true,
+  "background": { 
+    "type": "plain",
+    "color": "#101014"
+  },
+  "frame": "#0B0B0F",
+  "border": "#1C1C22",
+  "glass": "#CC1A1A20",
+  "input": "#EE1A1A20",
+  "user": "#FF3A3A6A",
+  "error": "#CC802020",
+  "glassBorder": "#22FFFFFF",
+  "blur": 0
+}

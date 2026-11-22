@@ -20,24 +20,24 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-val LocalStarField = staticCompositionLocalOf<StarField?> { null }
+val LocalShaderField = staticCompositionLocalOf<ShaderField?> { null }
 
 @Composable
 fun GlassPanel(
   modifier: Modifier = Modifier,
   shape: Shape = RoundedCornerShape(16.dp),
-  blur: Dp = 20.dp,
-  tint: Color = Color(0x55101015),
+  blur: Dp = LocalTheme.current.blur,
+  tint: Color = LocalTheme.current.glass,
   content: @Composable BoxScope.() -> Unit,
-) {
-  val field = LocalStarField.current
+  ) {
+    val field = LocalShaderField.current
   var pos by remember { mutableStateOf(Offset.Zero) }
 
   Box(
     modifier
       .onGloballyPositioned { pos = it.positionInWindow() }
       .clip(shape)
-      .border(1.dp, Color(0x22FFFFFF), shape)
+      .border(1.dp, LocalTheme.current.glassBorder, shape)
   ) {
     if (field != null && blur > 0.dp) {
       Canvas(Modifier.matchParentSize().blur(blur, BlurredEdgeTreatment.Unbounded)) {

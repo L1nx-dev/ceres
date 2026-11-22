@@ -1,0 +1,16 @@
+{
+  "name": "Stars",
+  "dark": true,
+  "background": { 
+    "type": "shader",
+    "file": "shader.sksl"
+  },
+  "frame": "#040408",
+  "border": "#141414",
+  "glass": "#55101015",
+  "input": "#CC15151A",
+  "user": "#883A3A6A",
+  "error": "#88802020",
+  "glassBorder": "#22FFFFFF",
+  "blur": 12
+}

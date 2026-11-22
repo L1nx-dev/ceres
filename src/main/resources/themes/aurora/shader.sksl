@@ -1,0 +1,15 @@
+uniform float2 resolution;
+uniform float time;
+
+half4 main(float2 fragCoord) {
+    float2 uv = fragCoord / resolution;
+    float t = time * 0.10;
+    float a = sin(uv.x * 3.2 + t) * 0.5 + 0.5;
+    float b = cos(uv.y * 3.0 - t * 0.8) * 0.5 + 0.5;
+    float g1 = 1.0 - smoothstep(0.0, 0.85, length((uv - float2(0.22, 0.72)) * float2(1.0, 1.35)));
+    float g2 = 1.0 - smoothstep(0.0, 0.90, length((uv - float2(0.82, 0.24)) * float2(1.1, 1.4)));
+    float3 c = float3(0.035, 0.060, 0.085);
+    c += float3(0.035, 0.28, 0.27) * (0.20 + 0.28 * a) * g1;
+    c += float3(0.20, 0.10, 0.34) * (0.18 + 0.25 * b) * g2;
+    return half4(c, 1.0);
+}

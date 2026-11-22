@@ -1,0 +1,11 @@
+{
+  "name": "Light",
+  "dark": false,
+  "background": { "type": "plain", "color": "#F6EEDF" },
+  "frame": "#EFE4D0", "border": "#D3BC9A",
+  "glass": "#E6FAF3E6", "input": "#F2F8EFE0",
+  "user": "#FFD9B88F", "error": "#FFE3B5A0",
+  "glassBorder": "#33A47C4E", "blur": 0,
+  "text": "#3B2A1A", "accent": "#9C6B3E", "codeBg": "#33A47C4E",
+  "sendBg": "#9C6B3E", "sendFg": "#FFF8EC"
+}

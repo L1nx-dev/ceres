@@ -1,0 +1,21 @@
+{
+  "name": "Aurora",
+  "dark": true,
+  "background": {
+    "type": "shader",
+    "file": "shader.sksl"
+  },
+  "frame": "#101820",
+  "border": "#293743",
+  "glass": "#CC101820",
+  "input": "#EE101820",
+  "user": "#FF285B68",
+  "error": "#CCB85C78",
+  "glassBorder": "#4468D5C4",
+  "blur": 18,
+  "text": "#E3F1EF",
+  "accent": "#75D6C2",
+  "codeBg": "#33415B60",
+  "sendBg": "#75D6C2",
+  "sendFg": "#10201F"
+}

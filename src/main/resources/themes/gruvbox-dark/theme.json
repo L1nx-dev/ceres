@@ -1,0 +1,21 @@
+{
+  "name": "Gruvbox Dark",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#282828"
+  },
+  "frame": "#1D2021",
+  "border": "#3C3836",
+  "glass": "#CC282828",
+  "input": "#EE282828",
+  "user": "#FFD79921",
+  "error": "#CCFB4934",
+  "glassBorder": "#33EBDBB2",
+  "blur": 0,
+  "text": "#EBDBB2",
+  "accent": "#FABD2F",
+  "codeBg": "#333C3836",
+  "sendBg": "#FABD2F",
+  "sendFg": "#282828"
+}

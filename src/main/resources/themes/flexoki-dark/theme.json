@@ -1,0 +1,21 @@
+{
+  "name": "Flexoki Dark",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#100F0F"
+  },
+  "frame": "#1C1B1A",
+  "border": "#343331",
+  "glass": "#FF1C1B1A",
+  "input": "#FF242321",
+  "user": "#FF3B3935",
+  "error": "#CCAF3029",
+  "glassBorder": "#556C6A63",
+  "blur": 0,
+  "text": "#CECDC3",
+  "accent": "#DA702C",
+  "codeBg": "#FF282724",
+  "sendBg": "#DA702C",
+  "sendFg": "#100F0F"
+}

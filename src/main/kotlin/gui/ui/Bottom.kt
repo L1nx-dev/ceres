@@ -30,8 +30,8 @@ fun GoToBottom(
   ) {
     GlassPanel(
       shape = RoundedCornerShape(100.dp),
-      blur = 12.dp, 
-      tint = Color(0xCC15151A)
+      blur = LocalTheme.current.blur, 
+      tint = LocalTheme.current.input
     ) {
       SmallFloatingActionButton(
         shape = RoundedCornerShape(100.dp),

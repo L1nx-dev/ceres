@@ -42,8 +42,9 @@ private val listRe = Regex("""(?m)^[ \t]*([-*+]|\d+[.)])(?= )""")
 
 private val mono = SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0x33FFFFFF))
 
-private val mdTransformation = VisualTransformation { text ->
+private fun mdTransformation(accent: Color, codeBg: Color) = VisualTransformation { text ->
   val s = text.text
+  val mono = SpanStyle(fontFamily = FontFamily.Monospace, background = codeBg)
   val styled = buildAnnotatedString {
     append(s)
     fun mark(re: Regex, st: SpanStyle) =
@@ -72,6 +73,9 @@ fun InputBar(
   var expanded by remember { mutableStateOf(false) }
   var tf by remember { mutableStateOf(TextFieldValue()) }
 
+  val theme = LocalTheme.current
+  val md = remember(theme) { mdTransformation(theme.accent, theme.codeBg) }
+
   var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
   fun send() {
@@ -88,12 +92,12 @@ fun InputBar(
   GlassPanel(
     modifier = modifier,
     shape = RoundedCornerShape(24.dp),
-    blur = 12.dp, tint = Color(0xCC15151A)
+    blur = LocalTheme.current.blur, tint = theme.input
   ) {
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
       BasicTextField(
         value = tf,
-        visualTransformation = mdTransformation,
+        visualTransformation = md,
         onValueChange = { tf = it; if (it.text.isEmpty()) expanded = false },
         textStyle = style,
         cursorBrush = SolidColor(fg),
@@ -114,7 +118,7 @@ fun InputBar(
               val top = l.getLineTop(l.getLineForOffset(m.range.first))
               val bottom = l.getLineBottom(l.getLineForOffset(m.range.last))
               drawRoundRect(
-                Color(0x33FFFFFF),
+                theme.codeBg,
                 topLeft = Offset(-6.dp.toPx(), top),
                 size = Size(size.width + 12.dp.toPx(), bottom - top),
                 cornerRadius = CornerRadius(8.dp.toPx()),
@@ -144,7 +148,7 @@ fun InputBar(
           .size(36.dp),
         shape = CircleShape,
         contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+        colors = ButtonDefaults.buttonColors(containerColor = theme.sendBg, contentColor = theme.sendFg)
       ) { Text(if (busy) "■" else "↵") }
     }
   }

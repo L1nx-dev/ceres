@@ -1,0 +1,21 @@
+{
+  "name": "Deep Space",
+  "dark": true,
+  "background": {
+    "type": "shader",
+    "file": "shader.sksl"
+  },
+  "frame": "#090D1B",
+  "border": "#202943",
+  "glass": "#CC090D1B",
+  "input": "#EE090D1B",
+  "user": "#FF354B78",
+  "error": "#CCB45B75",
+  "glassBorder": "#443D5A9A",
+  "blur": 20,
+  "text": "#E3E8F7",
+  "accent": "#91A9FF",
+  "codeBg": "#333D4B70",
+  "sendBg": "#91A9FF",
+  "sendFg": "#0B1020"
+}

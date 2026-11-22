@@ -5,7 +5,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun Sidebar(state: ChatState, modifier: Modifier = Modifier) {
+fun Sidebar(
+  state: ChatState,
+  themes: ThemeState,
+  onImport: () -> Unit,
+  modifier: Modifier = Modifier
+) {
   Column(modifier.fillMaxSize()) {
     SidebarHeader(onNewChat = { state.newChat(null) })
     ChatList(
@@ -16,5 +21,6 @@ fun Sidebar(state: ChatState, modifier: Modifier = Modifier) {
       onRemove = { id -> state.commandOn(state.current, "/chat remove $id") },
       modifier = Modifier.weight(1f).fillMaxWidth(),
     )
+    ThemePicker(themes, onImport)
   }
 }

@@ -49,13 +49,13 @@ fun MessageList(
 fun MessageRow(line: Line) {
   when (line.role) {
     LineRole.USER -> Box(Modifier.fillMaxWidth(), Alignment.CenterEnd) {
-      GlassPanel(Modifier.widthIn(max = 560.dp), blur = 12.dp, tint = Color(0x883A3A6A)) {
+      GlassPanel(Modifier.widthIn(max = 560.dp), blur = LocalTheme.current.blur, tint = LocalTheme.current.user) {
         Text(line.text, Modifier.padding(12.dp))
       }
     }
 
     // LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
-    //   GlassPanel(Modifier.widthIn(max = 900.dp), blur = 12.dp) {
+    //   GlassPanel(Modifier.widthIn(max = 900.dp), blur = LocalTheme.current.blur) {
     //     // Text(line.text, Modifier.padding(12.dp))
     //     val md = rememberStreamingMarkdownState()
     //     var fed by remember { mutableIntStateOf(0) }
@@ -70,7 +70,7 @@ fun MessageRow(line: Line) {
     // }
 
     LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
-      GlassPanel(Modifier.widthIn(max = 900.dp), blur = 12.dp) {
+      GlassPanel(Modifier.widthIn(max = 900.dp), blur = LocalTheme.current.blur) {
         val parsed = rememberMarkdownState(line.text, retainState = true, immediate = true)
         Markdown(parsed, modifier = Modifier.padding(12.dp))
       }
@@ -86,7 +86,7 @@ fun MessageRow(line: Line) {
     }
 
     LineRole.ERROR -> Box(Modifier.fillMaxWidth(), Alignment.Center) {
-      GlassPanel(Modifier.fillMaxWidth().widthIn(max = 640.dp), blur = 0.dp, tint = Color(0x88802020)) {
+      GlassPanel(Modifier.fillMaxWidth().widthIn(max = 640.dp), blur = 0.dp, tint = LocalTheme.current.error) {
         Text(line.text, Modifier.padding(12.dp))
       }
     }

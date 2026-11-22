@@ -1,0 +1,21 @@
+{
+  "name": "Everforest Dark",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#2D353B"
+  },
+  "frame": "#232A2E",
+  "border": "#475258",
+  "glass": "#FF374247",
+  "input": "#FF323D42",
+  "user": "#FF4F6B62",
+  "error": "#CCD699B6",
+  "glassBorder": "#557A9A86",
+  "blur": 0,
+  "text": "#D3C6AA",
+  "accent": "#A7C080",
+  "codeBg": "#FF343F44",
+  "sendBg": "#A7C080",
+  "sendFg": "#2D353B"
+}

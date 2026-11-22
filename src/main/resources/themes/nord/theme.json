@@ -1,0 +1,21 @@
+{
+  "name": "Nord",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#2E3440"
+  },
+  "frame": "#242A35",
+  "border": "#434C5E",
+  "glass": "#FF3B4556",
+  "input": "#FF353F50",
+  "user": "#FF4C607A",
+  "error": "#CCBF616A",
+  "glassBorder": "#557D8FA8",
+  "blur": 0,
+  "text": "#ECEFF4",
+  "accent": "#A3BE8C",
+  "codeBg": "#FF303946",
+  "sendBg": "#A3BE8C",
+  "sendFg": "#242A35"
+}

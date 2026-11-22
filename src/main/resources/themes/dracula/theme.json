@@ -1,0 +1,21 @@
+{
+  "name": "Dracula",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#282A36"
+  },
+  "frame": "#21222C",
+  "border": "#44475A",
+  "glass": "#CC282A36",
+  "input": "#EE282A36",
+  "user": "#FF44475A",
+  "error": "#CCFF5555",
+  "glassBorder": "#33F8F8F2",
+  "blur": 0,
+  "text": "#F8F8F2",
+  "accent": "#BD93F9",
+  "codeBg": "#3344475A",
+  "sendBg": "#BD93F9",
+  "sendFg": "#282A36"
+}

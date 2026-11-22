@@ -1,0 +1,21 @@
+{
+  "name": "Flexoki Light",
+  "dark": false,
+  "background": {
+    "type": "plain",
+    "color": "#FFFCF0"
+  },
+  "frame": "#F2F0E5",
+  "border": "#E6E4D9",
+  "glass": "#FFFFFFFF",
+  "input": "#FFF5F3E8",
+  "user": "#FFECE9D5",
+  "error": "#CCD14D41",
+  "glassBorder": "#3387836F",
+  "blur": 0,
+  "text": "#100F0F",
+  "accent": "#BC5215",
+  "codeBg": "#FFECE9D5",
+  "sendBg": "#BC5215",
+  "sendFg": "#FFFCF0"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Solarized Dark",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#002B36"
+  },
+  "frame": "#00212B",
+  "border": "#164A55",
+  "glass": "#FF073642",
+  "input": "#FF06313B",
+  "user": "#FF145461",
+  "error": "#CCDC322F",
+  "glassBorder": "#557B969A",
+  "blur": 0,
+  "text": "#EEE8D5",
+  "accent": "#2AA198",
+  "codeBg": "#FF07313B",
+  "sendBg": "#2AA198",
+  "sendFg": "#002B36"
+}

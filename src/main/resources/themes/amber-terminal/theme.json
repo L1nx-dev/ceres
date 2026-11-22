@@ -1,0 +1,21 @@
+{
+  "name": "Amber Terminal",
+  "dark": true,
+  "background": {
+    "type": "plain",
+    "color": "#17130D"
+  },
+  "frame": "#100D09",
+  "border": "#40301B",
+  "glass": "#FF241B10",
+  "input": "#FF2B2113",
+  "user": "#FF513719",
+  "error": "#CCB84A3A",
+  "glassBorder": "#557C5A32",
+  "blur": 0,
+  "text": "#F0D9A6",
+  "accent": "#E6A23C",
+  "codeBg": "#FF302416",
+  "sendBg": "#E6A23C",
+  "sendFg": "#17130D"
+}

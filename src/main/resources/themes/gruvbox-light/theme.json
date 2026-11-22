@@ -1,0 +1,21 @@
+{
+  "name": "Gruvbox Light",
+  "dark": false,
+  "background": {
+    "type": "plain",
+    "color": "#FBF1C7"
+  },
+  "frame": "#F2E5BC",
+  "border": "#D5C4A1",
+  "glass": "#FFFFF8E1",
+  "input": "#FFF5EBCB",
+  "user": "#FFEBDDB2",
+  "error": "#CC9D0006",
+  "glassBorder": "#33876B58",
+  "blur": 0,
+  "text": "#3C3836",
+  "accent": "#AF3A03",
+  "codeBg": "#FFEBDDB2",
+  "sendBg": "#AF3A03",
+  "sendFg": "#FBF1C7"
+}

@@ -17,6 +17,7 @@ import kotlin.io.path.div
 import ceres.system.*
 import ceres.gui.common.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.background
 
 fun main() {
   val xdg = Xdg(seed = false)
@@ -27,32 +28,33 @@ fun main() {
   api.listen(state::onEvent)
   state.connect()
 
+  val themes = ThemeState(xdg.config / "themes", xdg.share / "gui" / "theme")
+
+  fun pickTheme(): Path? = javax.swing.JFileChooser().let {
+    it.fileSelectionMode = javax.swing.JFileChooser.FILES_AND_DIRECTORIES
+    if (it.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) it.selectedFile.toPath() else null
+  }
+
   application {
     Window(onCloseRequest = ::exitApplication, title = "Ceres") {
-      val field = remember { StarField() }
+      val theme = themes.current
+      val field = remember(theme) { (theme.background as? Background.Shader)?.let { ShaderField(it.sksl) } }
 
-      MaterialTheme(colorScheme = darkColorScheme()) {
-        Surface(
-          Modifier.fillMaxSize(),
-          color = Color.Transparent,
-          contentColor = MaterialTheme.colorScheme.onBackground,
-        ) {
-          CompositionLocalProvider(LocalStarField provides field) {
+      MaterialTheme(colorScheme = theme.colorScheme()) {
+        Surface(Modifier.fillMaxSize(), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
+          CompositionLocalProvider(LocalTheme provides theme, LocalShaderField provides field) {
             Box(Modifier.fillMaxSize()) {
-              StarBackground(field, Modifier.fillMaxSize())
-
-              Box(Modifier.fillMaxSize()) {
-                var open by remember { mutableStateOf(false) }
-                StarBackground(field, Modifier.fillMaxSize())
-
-                Frame(
-                  open, Color(0xFF040408),
-                  Color(0xFF141414),
-                  sidebar = { Sidebar(state, Modifier.fillMaxSize()) },
-                  content = { Chat(state, Modifier.fillMaxSize()) },
-                  menu = { MenuButton({open = !open}, 20, open)}
-                ) 
+              var open by remember { mutableStateOf(false) }
+              when (val bg = theme.background) {
+                is Background.Shader -> ShaderBackground(field!!, Modifier.fillMaxSize())
+                is Background.Plain  -> Box(Modifier.fillMaxSize().background(bg.color))
               }
+              Frame(
+                open, theme.frame, theme.border,
+                sidebar = { Sidebar(state, themes, { kotlin.concurrent.thread { pickTheme()?.let(themes::import) } }, Modifier.fillMaxSize()) },
+                content = { Chat(state, Modifier.fillMaxSize()) },
+                menu = { MenuButton({ open = !open }, 20, open) },
+              )
             }
           }
         }

@@ -1,0 +1,21 @@
+{
+  "name": "Solarized Light",
+  "dark": false,
+  "background": {
+    "type": "plain",
+    "color": "#FDF6E3"
+  },
+  "frame": "#EEE8D5",
+  "border": "#D6CEBA",
+  "glass": "#FFFFFFFF",
+  "input": "#FFF7F0DF",
+  "user": "#FFEDE4CE",
+  "error": "#CCDC322F",
+  "glassBorder": "#33839796",
+  "blur": 0,
+  "text": "#586E75",
+  "accent": "#268BD2",
+  "codeBg": "#FFE8E0C9",
+  "sendBg": "#268BD2",
+  "sendFg": "#FDF6E3"
+}
