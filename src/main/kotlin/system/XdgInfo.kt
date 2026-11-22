@@ -35,7 +35,15 @@ class Xdg(seed: Boolean = true) {
   )
 
   init {
-    listOf(config, share, skills, memory, uploads).forEach { it.createDirectories() }
+    listOf(
+      config,
+      share,
+      skills,
+      memory,
+      uploads,
+      config / "themes",
+      config / "skills"
+    ).forEach { it.createDirectories() }
     if (seed) defaultResources.forEach { (name, dir) -> copyResourceIfMissing(name, dir) }
   }
 

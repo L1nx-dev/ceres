@@ -25,32 +25,45 @@ fun Theme.colorScheme(): ColorScheme =
   )
 
 data class Theme(
-  val id: String, val name: String, val dark: Boolean,
+  val id: String,
+  val name: String,
+  val dark: Boolean,
   val background: Background,
-  val frame: Color, val border: Color,
-  val glass: Color, val input: Color, val user: Color, val error: Color,
-  val glassBorder: Color, val blur: Dp,
-  val text: Color, val accent: Color, val codeBg: Color, val sendBg: Color, val sendFg: Color,
+  val frame: Color,
+  val border: Color,
+  val glass: Color,
+  val input: Color,
+  val user: Color,
+  val error: Color,
+  val glassBorder: Color,
+  val blur: Dp,
+  val text: Color,
+  val accent: Color,
+  val codeBg: Color,
+  val sendBg: Color,
+  val sendFg: Color,
+  val builtin: Boolean = false,
 ) {
   companion object {
     val Default = Theme(
-      "dark",
-      "Fallback",
-      true,
-      Background.Plain(Color(0xFF101014)),
-      Color(0xFF0B0B0F),
-      Color(0xFF1C1C22),
-      Color(0xCC1A1A20),
-      Color(0xEE1A1A20),
-      Color(0xFF3A3A6A),
-      Color(0xCC802020),
-      Color(0x22FFFFFF),
-      0.dp,
-      Color(0xFFE6E1E5),
-      Color(0xFF8AB4F8),
-      Color(0x33FFFFFF),
-      Color.White,
-      Color.Black,
+      id = "dark",
+      name = "Fallback",
+      dark = true,
+      background = Background.Plain(Color(0xFF101014)),
+      frame = Color(0xFF0B0B0F),
+      border = Color(0xFF1C1C22),
+      glass = Color(0xCC1A1A20),
+      input = Color(0xEE1A1A20),
+      user = Color(0xFF3A3A6A),
+      error = Color(0xCC802020),
+      glassBorder = Color(0x22FFFFFF),
+      blur = 0.dp,
+      text = Color(0xFFE6E1E5),
+      accent = Color(0xFF8AB4F8),
+      codeBg = Color(0x33FFFFFF),
+      sendBg = Color.White,
+      sendFg = Color.Black,
+      builtin = true,
     )
   }
 }
@@ -71,20 +84,21 @@ object ThemeLoader {
     }
   }
 
-  fun load(dir: Path): Theme {
-    val o = Json.parseToJsonElement((dir / "theme.json").readText()).jsonObject
+  private fun parse(id: String, builtin: Boolean, json: String, file: (String) -> String): Theme {
+
+    val o = Json.parseToJsonElement(json).jsonObject
     val d = Theme.Default
+    val bg = o["background"]?.jsonObject
+
     fun col(k: String, def: Color): Color {
       val h = o[k]?.jsonPrimitive?.contentOrNull?.removePrefix("#") ?: return def
       val v = h.toLongOrNull(16) ?: return def
       return when (h.length) { 6 -> Color(0xFF000000 or v); 8 -> Color(v); else -> def }
     }
-    val bg = o["background"]?.jsonObject
+
     val background = when (bg?.get("type")?.jsonPrimitive?.contentOrNull) {
       "shader" -> {
-        val f = dir.resolve(bg!!.getValue("file").jsonPrimitive.content).normalize()
-        require(f.startsWith(dir.normalize()) && f.isRegularFile()) { "bad shader path" }
-        val src = f.readText()
+        val src = file(bg!!.getValue("file").jsonPrimitive.content)
         require("resolution" in src && "time" in src) { "shader must declare uniforms 'resolution' and 'time'" }
         RuntimeEffect.makeForShader(src).close() // throws on compile error
         Background.Shader(src)
@@ -93,9 +107,10 @@ object ThemeLoader {
         bg?.get("color")?.jsonPrimitive?.contentOrNull?.let { runCatching { Color(it.removePrefix("#").toLong(16) or 0xFF000000) }.getOrNull() }
           ?: Color(0xFF101014))
     }
+
     return Theme(
-      id = dir.fileName.toString(),
-      name = o["name"]?.jsonPrimitive?.contentOrNull ?: dir.fileName.toString(),
+      id = id,
+      name = o["name"]?.jsonPrimitive?.contentOrNull ?: id,
       dark = o["dark"]?.jsonPrimitive?.booleanOrNull ?: true,
       background = background,
       frame = col("frame", d.frame), border = col("border", d.border),
@@ -105,7 +120,28 @@ object ThemeLoader {
       blur = (o["blur"]?.jsonPrimitive?.floatOrNull ?: 12f).dp,
       text = col("text", d.text), accent = col("accent", d.accent), codeBg = col("codeBg", d.codeBg),
       sendBg = col("sendBg", d.sendBg), sendFg = col("sendFg", d.sendFg),
+      builtin = builtin,
     )
+  }
+
+  fun load(dir: Path): Theme =
+    parse(dir.fileName.toString(), false, (dir / "theme.json").readText()) { rel ->
+      val f = dir.resolve(rel).normalize()
+      require(f.startsWith(dir.normalize()) && f.isRegularFile()) { "bad shader path" }
+      f.readText()
+    }
+
+  private fun res(path: String) =
+    ThemeLoader::class.java.getResourceAsStream(path)?.use { it.readBytes().decodeToString() }
+
+  fun bundled(): List<Theme> {
+    val index = res("/themes/index.txt") ?: return emptyList()
+    return index.lines().map { it.trim() }.filter { it.endsWith("/theme.json") }.mapNotNull { rel ->
+      val folder = rel.substringBefore('/')
+      runCatching {
+        parse("builtin:$folder", true, res("/themes/$rel")!!) { f -> res("/themes/$folder/$f") ?: error("bad shader path") }
+      }.getOrNull()
+    }
   }
 
   fun import(src: Path, themesDir: Path): String {
@@ -140,18 +176,16 @@ class ThemeState(private val dir: Path, private val saved: Path) {
 
   init {
     dir.createDirectories()
-    val marker = dir / ".bundled"
-    if (!marker.exists()) { ThemeLoader.installBundled(dir); marker.writeText("") }
     reload()
     select(runCatching { saved.readText().trim() }.getOrDefault(""))
   }
 
-  private fun fallback() = themes.firstOrNull { it.id == "dark" } ?: themes.first()
+  private fun fallback() = themes.firstOrNull { it.id == "builtin:dark" } ?: themes.first()
 
   fun reload() {
-    val found = Files.list(dir).use { s -> s.filter { it.isDirectory() }.sorted().toList() }
+    val user = Files.list(dir).use { s -> s.filter { it.isDirectory() }.sorted().toList() }
       .mapNotNull { runCatching { ThemeLoader.load(it) }.getOrNull() }
-    themes = found.ifEmpty { listOf(Theme.Default) }
+    themes = (ThemeLoader.bundled() + user).ifEmpty { listOf(Theme.Default) }
     current = themes.firstOrNull { it.id == current.id } ?: fallback()
   }
 
@@ -159,8 +193,6 @@ class ThemeState(private val dir: Path, private val saved: Path) {
     current = themes.firstOrNull { it.id == id } ?: fallback()
     runCatching { saved.parent.createDirectories(); saved.writeText(current.id) }
   }
-
-  fun restoreBundled() { ThemeLoader.installBundled(dir, overwrite = true); reload() }
 
   fun import(src: Path) {
     error = runCatching { val id = ThemeLoader.import(src, dir); reload(); select(id); null }
