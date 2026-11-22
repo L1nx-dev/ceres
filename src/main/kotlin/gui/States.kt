@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlin.io.path.*
 import kotlinx.serialization.json.*
+import androidx.compose.runtime.snapshots.Snapshot
 
 data class ChatInfo(val id: Long, val name: String?, val updated: Long = 0)
 
@@ -17,8 +18,11 @@ interface ChatApi {
   fun prompt(text: String, files: List<String>, onReject: (String) -> Unit)
   fun command(id: Long, text: String): String
   fun upload(file: Path): String
-  fun cancel(); fun history(id: Long): List<HistoryLine>
-  fun chats(): List<ChatInfo>; fun create(name: String?): Long; fun select(id: Long)
+  fun cancel()
+  fun history(id: Long): List<HistoryLine>
+  fun chats(): List<ChatInfo>
+  fun create(name: String?): Long
+  fun select(id: Long)
   fun connect()
 }
 
@@ -31,8 +35,17 @@ class Line(val id: Long, val role: LineRole, text: String) {
 class ChatView {
   val lines = mutableStateListOf<Line>()
   private var next = 0L
-  @Synchronized fun add(role: LineRole, text: String) { lines += Line(next++, role, text) }
-  @Synchronized fun load(h: List<HistoryLine>) { lines.clear(); h.forEach { add(LineRole.valueOf(it.role), it.text) } }
+
+  @Synchronized fun add(role: LineRole, text: String) {
+    val l = Line(next++, role, text)
+    Snapshot.withMutableSnapshot { lines += l }
+  }
+
+  @Synchronized fun load(h: List<HistoryLine>) {
+    val new = h.map { Line(next++, LineRole.valueOf(it.role), it.text) }
+    Snapshot.withMutableSnapshot { lines.clear(); lines.addAll(new) }
+  }
+
   fun snapshot() = lines.map { HistoryLine(it.role.name, it.text) }
 }
 

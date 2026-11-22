@@ -33,7 +33,7 @@ fun Chat(state: ChatState, modifier: Modifier = Modifier) {
   var isInputExpanded by remember { mutableStateOf(false) }
 
   val showScrollToBottomButton by remember {
-    derivedStateOf { listState.canScrollForward }
+    derivedStateOf { listState.canScrollForward && !state.draft }
   }
 
   val needsFade = showScrollToBottomButton || isInputExpanded
