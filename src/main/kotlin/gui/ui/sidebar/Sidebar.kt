@@ -4,16 +4,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.*
 
 @Composable
 fun Sidebar(
   state: ChatState,
   themes: ThemeState,
   onImport: () -> Unit,
-  modifier: Modifier = Modifier
+  onSettings: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Column(modifier.fillMaxSize()) {
-    SidebarHeader(onNewChat = state::startDraft, modifier = Modifier.padding(vertical = 4.dp))
+    SidebarHeader(
+      onNewChat = state::startDraft,
+      modifier = Modifier.padding(vertical = 4.dp)
+    )
+
     ChatList(
       chats = state.chats,
       current = if (state.draft) -1L else state.current,
@@ -22,6 +28,9 @@ fun Sidebar(
       onRemove = state::remove,
       modifier = Modifier.weight(1f).fillMaxWidth(),
     )
-    ThemePicker(themes, onImport)
+    
+    HorizontalDivider()
+
+    TextButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) { Text("Settings") }
   }
 }

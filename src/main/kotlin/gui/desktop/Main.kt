@@ -18,6 +18,12 @@ import ceres.system.*
 import ceres.gui.common.*
 import androidx.compose.runtime.*
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.key.*
+
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import org.jetbrains.skia.Surface
+import org.jetbrains.skia.Image as SkiaImage
+import org.jetbrains.skia.Rect as SkRect
 
 fun main() {
   val xdg = Xdg(seed = false)
@@ -36,29 +42,76 @@ fun main() {
   }
 
   application {
-    Window(onCloseRequest = ::exitApplication, title = "Ceres") {
+
+    var settings by remember { mutableStateOf(false) }
+    Window(
+      onCloseRequest = ::exitApplication, title = "Ceres",
+      onPreviewKeyEvent = {
+        if (settings && it.key == Key.Escape && it.type == KeyEventType.KeyDown) { settings = false; true } else false
+      },
+    ) {
       val theme = themes.current
       val field = remember(theme) { (theme.background as? Background.Shader)?.let { ShaderField(it.sksl) } }
 
       MaterialTheme(colorScheme = theme.colorScheme()) {
-        Surface(Modifier.fillMaxSize(), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
-          CompositionLocalProvider(LocalTheme provides theme, LocalShaderField provides field) {
+        Surface(Modifier.fillMaxSize(),
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground
+      ) {
+          CompositionLocalProvider(
+            LocalTheme provides theme,
+            LocalShaderField provides field,
+            LocalThumbnailDecoder provides DesktopThumbnailDecoder,
+          ) {
+
             Box(Modifier.fillMaxSize()) {
+
               var open by remember { mutableStateOf(false) }
+
               when (val bg = theme.background) {
                 is Background.Shader -> ShaderBackground(field!!, Modifier.fillMaxSize())
                 is Background.Plain  -> Box(Modifier.fillMaxSize().background(bg.color))
               }
+
               Frame(
                 open, theme.frame, theme.border,
-                sidebar = { Sidebar(state, themes, { kotlin.concurrent.thread { pickTheme()?.let(themes::import) } }, Modifier.fillMaxSize()) },
+                sidebar = { Sidebar(
+                  state,
+                  themes,
+                  onImport = { kotlin.concurrent.thread {
+                    pickTheme()
+                    ?.let(themes::import) 
+                  }},
+                  onSettings = { settings = true },
+                  modifier = Modifier.fillMaxSize()) },
                 content = { Chat(state, Modifier.fillMaxSize()) },
                 menu = { MenuButton({ open = !open }, 20, open) },
               )
+
+              val pages = listOf(
+                SettingsPage("appearance", "Appearance") { ThemePicker(themes, { kotlin.concurrent.thread { pickTheme()?.let(themes::import) } }) },
+                SettingsPage("connection", "Connection") { /* host/port rows */ },
+              )
+
+              SettingsOverlay(settings, pages, sheet = false) { settings = false }
             }
           }
         }
       }
     }
   }
+}
+
+val DesktopThumbnailDecoder = ThumbnailDecoder { bytes, w, h ->
+  val src = SkiaImage.makeFromEncoded(bytes)
+  val scale = maxOf(w.toFloat() / src.width, h.toFloat() / src.height)
+  val sw = w / scale
+  val sh = h / scale
+  val surface = Surface.makeRasterN32Premul(w, h)
+  surface.canvas.drawImageRect(
+    src,
+    SkRect.makeXYWH((src.width - sw) / 2, (src.height - sh) / 2, sw, sh),
+    SkRect.makeWH(w.toFloat(), h.toFloat()),
+  )
+  surface.makeImageSnapshot().toComposeImageBitmap()
 }

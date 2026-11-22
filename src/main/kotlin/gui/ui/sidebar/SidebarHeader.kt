@@ -8,7 +8,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 
 @Composable
-fun SidebarHeader(onNewChat: () -> Unit, modifier: Modifier = Modifier) {
+fun SidebarHeader(
+  onNewChat: () -> Unit,
+  modifier: Modifier = Modifier
+) {
   Column(modifier.fillMaxWidth()) {
     Row(
       Modifier.fillMaxWidth().height(HeaderHeight).padding(start = MenuX + MenuSize + 8.dp),

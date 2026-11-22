@@ -12,6 +12,27 @@ import java.nio.file.*
 import java.util.zip.ZipInputStream
 import kotlin.io.path.*
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+
 sealed interface Background {
   data class Plain(val color: Color) : Background
   data class Shader(val sksl: String) : Background
@@ -43,6 +64,7 @@ data class Theme(
   val sendBg: Color,
   val sendFg: Color,
   val builtin: Boolean = false,
+  val thumbnail: () -> ByteArray? = {null},
 ) {
   companion object {
     val Default = Theme(
@@ -64,6 +86,7 @@ data class Theme(
       sendBg = Color.White,
       sendFg = Color.Black,
       builtin = true,
+      thumbnail = {null}
     )
   }
 }
@@ -94,7 +117,7 @@ object ThemeLoader {
       val h = o[k]?.jsonPrimitive?.contentOrNull?.removePrefix("#") ?: return def
       val v = h.toLongOrNull(16) ?: return def
       return when (h.length) { 6 -> Color(0xFF000000 or v); 8 -> Color(v); else -> def }
-    }
+  }
 
     val background = when (bg?.get("type")?.jsonPrimitive?.contentOrNull) {
       "shader" -> {
@@ -129,7 +152,7 @@ object ThemeLoader {
       val f = dir.resolve(rel).normalize()
       require(f.startsWith(dir.normalize()) && f.isRegularFile()) { "bad shader path" }
       f.readText()
-    }
+    }.copy(thumbnail = { runCatching { (dir / "thumbnail.jpeg").readBytes() }.getOrNull() })
 
   private fun res(path: String) =
     ThemeLoader::class.java.getResourceAsStream(path)?.use { it.readBytes().decodeToString() }
@@ -138,9 +161,11 @@ object ThemeLoader {
     val index = res("/themes/index.txt") ?: return emptyList()
     return index.lines().map { it.trim() }.filter { it.endsWith("/theme.json") }.mapNotNull { rel ->
       val folder = rel.substringBefore('/')
-      runCatching {
-        parse("builtin:$folder", true, res("/themes/$rel")!!) { f -> res("/themes/$folder/$f") ?: error("bad shader path") }
-      }.getOrNull()
+        runCatching {
+          parse("builtin:$folder", true, res("/themes/$rel")!!) { f -> res("/themes/$folder/$f") ?: error("bad shader path") }
+        }.getOrNull()?.copy(thumbnail = {
+          ThemeLoader::class.java.getResourceAsStream("/themes/$folder/thumbnail.jpeg")?.use { it.readBytes() }
+        })
     }
   }
 
@@ -200,20 +225,94 @@ class ThemeState(private val dir: Path, private val saved: Path) {
   }
 }
 
+private const val TW = 192
+private const val TH = 120
+
+object ThumbnailCache {
+  private val map = ConcurrentHashMap<String, ImageBitmap>()
+  fun get(id: String, load: () -> ImageBitmap?): ImageBitmap? =
+    map[id] ?: load()?.also { map[id] = it }
+  fun clear() = map.clear()
+}
+
+fun interface ThumbnailDecoder {
+  fun decode(bytes: ByteArray, w: Int, h: Int): ImageBitmap
+}
+
+val LocalThumbnailDecoder = staticCompositionLocalOf<ThumbnailDecoder> {
+  ThumbnailDecoder { _, _, _ -> error("no ThumbnailDecoder provided") }
+}
+
+@Composable
+private fun ThemeThumbnail(t: Theme, modifier: Modifier = Modifier) {
+  val decoder = LocalThumbnailDecoder.current
+  val img by produceState<ImageBitmap?>(null, t.id, decoder) {
+    value = withContext(Dispatchers.IO) {
+      runCatching { ThumbnailCache.get(t.id) { t.thumbnail()?.let { decoder.decode(it, TW, TH) } } }.getOrNull()
+    }
+  }
+  val shape = RoundedCornerShape(6.dp)
+  Box(modifier.aspectRatio(1.6f).clip(shape).border(1.dp, t.border, shape)) {
+    val i = img
+    if (i != null) {
+      Image(i, contentDescription = null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+    } else {
+      Box(Modifier.fillMaxSize().background((t.background as? Background.Plain)?.color ?: t.frame))
+      Box(Modifier.align(Alignment.BottomStart).padding(6.dp).size(50.dp, 8.dp).background(t.accent, RoundedCornerShape(6.dp)))
+    }
+  }
+}
+
+@Composable
+private fun ThemeCard(t: Theme, selected: Boolean, onClick: () -> Unit) {
+  val accent = LocalTheme.current.accent
+  val shape = RoundedCornerShape(10.dp)
+  Column(
+    Modifier.clip(shape)
+      .border(2.dp, if (selected) accent else Color.Transparent, shape)
+      .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+      .padding(6.dp),
+  ) {
+    ThemeThumbnail(t, Modifier.fillMaxWidth())
+    Text(t.name, Modifier.padding(top = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp)
+  }
+}
+
 @Composable
 fun ThemePicker(themes: ThemeState, onImport: () -> Unit, modifier: Modifier = Modifier) {
-  var open by remember { mutableStateOf(false) }
-  Column(modifier.fillMaxWidth().padding(8.dp)) {
-    HorizontalDivider()
-    Box {
-      TextButton({ open = true }, Modifier.fillMaxWidth()) { Text("Theme: ${themes.current.name}") }
-      DropdownMenu(open, { open = false }) {
-        themes.themes.forEach { t -> DropdownMenuItem({ Text(t.name) }, { themes.select(t.id); open = false }) }
-        HorizontalDivider()
-        DropdownMenuItem({ Text("Import…") }, { open = false; onImport() })
-        DropdownMenuItem({ Text("Reload") }, { open = false; themes.reload() })
+  val builtin = themes.themes.filter { it.builtin }
+  val custom = themes.themes.filterNot { it.builtin }
+
+  GlassPanel(
+    Modifier.widthIn(min = 720.dp).heightIn(max = 560.dp).fillMaxHeight(0.85f),
+    blur = 0.dp, tint = LocalTheme.current.frame, // opaque
+  ) {
+    Column(Modifier.fillMaxSize()) {
+      LazyVerticalGrid(
+        GridCells.Adaptive(150.dp),
+        Modifier.weight(1f),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        items(builtin, key = { it.id }) { t ->
+          ThemeCard(t, t.id == themes.current.id) { themes.select(t.id) }
+        }
+        if (custom.isNotEmpty()) {
+          item(span = { GridItemSpan(maxLineSpan) }) {
+            Text("Custom", Modifier.padding(top = 8.dp), fontSize = 12.sp,
+              color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+          }
+          items(custom, key = { it.id }) { t ->
+            ThemeCard(t, t.id == themes.current.id) { themes.select(t.id) }
+          }
+        }
+      }
+      HorizontalDivider()
+      Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onImport) { Text("Import") }
+        TextButton({ themes.reload() }) { Text("Reload") }
       }
     }
-    themes.error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
   }
 }
