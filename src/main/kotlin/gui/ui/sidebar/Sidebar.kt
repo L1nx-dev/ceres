@@ -3,6 +3,7 @@ package ceres.gui.common
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun Sidebar(
@@ -12,13 +13,13 @@ fun Sidebar(
   modifier: Modifier = Modifier
 ) {
   Column(modifier.fillMaxSize()) {
-    SidebarHeader(onNewChat = { state.newChat(null) })
+    SidebarHeader(onNewChat = state::startDraft, modifier = Modifier.padding(vertical = 4.dp))
     ChatList(
       chats = state.chats,
-      current = state.current,
+      current = if (state.draft) -1L else state.current,
       onSelect = state::select,
       onRename = { c, name -> state.commandOn(state.current, "/chat rename ${c.id} $name") },
-      onRemove = { id -> state.commandOn(state.current, "/chat remove $id") },
+      onRemove = state::remove,
       modifier = Modifier.weight(1f).fillMaxWidth(),
     )
     ThemePicker(themes, onImport)

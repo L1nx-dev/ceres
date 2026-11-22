@@ -17,6 +17,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 @Composable
 fun Chat(state: ChatState, modifier: Modifier = Modifier) {
@@ -57,7 +66,7 @@ fun Chat(state: ChatState, modifier: Modifier = Modifier) {
           } else mod
         }
     ) {
-      key(state.current) {
+      if (!state.draft) key(state.current) {
         MessageList(
           state.lines,
           listState = listState,
@@ -81,12 +90,13 @@ fun Chat(state: ChatState, modifier: Modifier = Modifier) {
       )
     }
 
-    state.notice?.let { n ->
-      Text(
-        n,
-        Modifier.align(Alignment.TopCenter).clickable { state.clearNotice() }.padding(8.dp),
-      )
-    }
+    Toasts(state, Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp))
+
+    val centered = state.draft && !state.busy
+    val bias by animateFloatAsState(
+      if (centered) 0f else 1f,
+      tween(350, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+    )
 
     InputBar(
       busy = state.busy, 
@@ -96,7 +106,7 @@ fun Chat(state: ChatState, modifier: Modifier = Modifier) {
       }, 
       onStop = state::cancel,
       modifier = Modifier
-        .align(Alignment.BottomCenter)
+        .align(BiasAlignment(0f, bias))
         .padding(16.dp)
         .widthIn(max = 900.dp)
         .fillMaxWidth(),

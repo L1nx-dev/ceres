@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
 
 private val SidebarWidth = 300.dp
 private val SidebarInset = 1.dp   // sidebar content stays clear of the border
@@ -54,7 +55,7 @@ fun Frame(
     }
 
     Box(Modifier.width(left).fillMaxHeight().padding(top = FrameTop, bottom = FrameSide).clipToBounds()) {
-      Box(Modifier.width(SidebarWidth - SidebarInset)) { sidebar() }
+      Box(Modifier.wrapContentWidth(Alignment.Start, unbounded = true).width(SidebarWidth - SidebarInset)) { sidebar() }
     }
 
     Box(Modifier.padding(start = MenuX, top = FrameTop + (HeaderHeight - MenuSize) / 2)) { menu() }

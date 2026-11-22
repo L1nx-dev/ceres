@@ -10,6 +10,8 @@ import kotlinx.serialization.json.*
 
 data class ChatInfo(val id: Long, val name: String?, val updated: Long = 0)
 
+class Notice(val id: Long, val text: String)
+
 interface ChatApi {
   val chat: Long
   fun prompt(text: String, files: List<String>, onReject: (String) -> Unit)
@@ -49,6 +51,11 @@ class Cache(private val dir: Path) {
     }
   }.getOrNull()
 
+  fun forget(id: Long) {
+    runCatching { (dir / "$id.json").deleteIfExists() }
+    loadChats()?.let { saveChats(it.filter { c -> c.id != id }) }
+  }
+
   fun saveChats(c: List<ChatInfo>) = runCatching {
     (dir / "chats.json").writeText(buildJsonArray {
       c.forEach { addJsonObject { put("id", it.id); put("name", it.name); put("updated", it.updated) } }
@@ -75,10 +82,31 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
     private set
   var chats by mutableStateOf(listOf<ChatInfo>())
     private set
+  var draft by mutableStateOf(false)
+    private set
+
+  fun startDraft() { draft = true }
+
+  private companion object { const val PENDING = -1L }
 
   val busy get() = busyChat != null
-  val lines get() = view(current).lines
-  val pending = mutableStateListOf<String>()
+    val lines get() = view(current).lines
+    val pending = mutableStateListOf<String>()
+
+  fun remove(id: Long) {
+    if (busy) return
+    val wasCurrent = id == current
+    thread(isDaemon = true) {
+      toast(runCatching { api.command(if (wasCurrent) -1L else current, "/chat remove $id") }
+        .getOrElse { "error: ${it.message}" })
+      val list = runCatching { api.chats() }.getOrNull() ?: return@thread
+      chats = list; cache.saveChats(list)
+      if (list.any { it.id == id }) return@thread
+      cache.forget(id); views.remove(id)
+      if (wasCurrent) draft = true
+      else if (!draft && list.none { it.id == current }) list.firstOrNull()?.let { select(it.id) }
+    }
+  }
 
   fun connect() = thread(isDaemon = true, name = "connect") {
     cache.loadChats()?.let { chats = it }
@@ -102,6 +130,7 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
   }
 
   fun select(id: Long) {
+    draft = false
     api.select(id); current = id
     thread(isDaemon = true) {
       runCatching { api.history(id) }
@@ -129,7 +158,20 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
 
   fun send(text: String) {
     if (busy) return
-    val id = current
+    if (!draft) { dispatch(current, text); return }
+    busyChat = PENDING
+    thread(isDaemon = true) {
+      runCatching { api.create(null) }
+        .onSuccess { id ->
+          api.select(id); current = id; draft = false
+          dispatch(id, text)
+          refreshChats()
+        }
+        .onFailure { busyChat = null; toast("error: ${it.message}") }
+    }
+  }
+
+  private fun dispatch(id: Long, text: String) {
     val files = pending.toList(); pending.clear()
     view(id).add(LineRole.USER, text); busyChat = id
     api.prompt(text, files) { err -> view(id).add(LineRole.ERROR, err); busyChat = null }
@@ -146,15 +188,20 @@ class ChatState(private val api: ChatApi, private val cache: Cache) {
     }
   }
 
-  var notice by mutableStateOf<String?>(null)
-    private set
+  val notices = mutableStateListOf<Notice>()
+  private var noticeSeq = 0L
 
-  fun clearNotice() { notice = null }
+  @Synchronized fun toast(text: String) {
+    notices += Notice(noticeSeq++, text)
+    while (notices.size > 5) notices.removeAt(0)
+  }
+
+  @Synchronized fun dismiss(id: Long) { notices.removeAll { it.id == id } }
 
   fun commandOn(id: Long, text: String) {
     if (busy) return
     thread(isDaemon = true) {
-      notice = runCatching { api.command(id, text) }.getOrElse { "error: ${it.message}" }
+      toast(runCatching { api.command(id, text) }.getOrElse { "error: ${it.message}" })
       val list = runCatching { api.chats() }.getOrNull() ?: return@thread
       chats = list; cache.saveChats(list)
       if (list.none { it.id == current }) list.firstOrNull()?.let { select(it.id) }

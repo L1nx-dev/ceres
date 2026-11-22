@@ -3,6 +3,7 @@ package ceres.gui.common
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.Alignment
 
 @Composable
 fun GoToBottom(
@@ -33,21 +37,20 @@ fun GoToBottom(
       blur = LocalTheme.current.blur, 
       tint = LocalTheme.current.input
     ) {
-      SmallFloatingActionButton(
-        shape = RoundedCornerShape(100.dp),
-        onClick = {
+      Box(
+        Modifier.size(40.dp).clickable(
+          interactionSource = remember { MutableInteractionSource() },
+          indication = null,
+        ) {
           coroutineScope.launch {
-            if (state.lines.isNotEmpty()) {
-              listState.animateScrollToItem(state.lines.lastIndex)
-            }
+            listState.animateScrollToItem(
+              (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0),
+              scrollOffset = Int.MAX_VALUE
+            )
           }
         },
-        containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        elevation = FloatingActionButtonDefaults.elevation(0.dp),
-      ) {
-        Text("↓")
-      }
+        contentAlignment = Alignment.Center,
+      ) { Text("↓") }
     }
   }
 }
