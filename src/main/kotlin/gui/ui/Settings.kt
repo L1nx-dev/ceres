@@ -65,12 +65,12 @@ fun SettingsOverlay(visible: Boolean, pages: List<SettingsPage>, sheet: Boolean,
             .fillMaxHeight(0.65f)
             .clip(shape)
             .background(panelColor)
-            .border(1.dp, theme.border, shape)
+            .border(2.dp, theme.border, shape)
             .clickable(interactionSource = none, indication = null) {}, // swallow clicks
         ) {
           Row(Modifier.fillMaxSize()) {
             PageList(pages, current, Modifier.width(200.dp).fillMaxHeight().padding(8.dp)) { selected = it }
-            VerticalDivider()
+            VerticalDivider( color = theme.border )
             if (page != null) PageBody(page, Modifier.weight(1f).fillMaxHeight())
           }
         }
