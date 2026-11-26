@@ -11,9 +11,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
+import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeFence
 import com.mikepenz.markdown.m3.*
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.mikepenz.markdown.model.rememberStreamingMarkdownState
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
+import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeFence
+import dev.snipme.highlights.Highlights
+import dev.snipme.highlights.model.SyntaxThemes
 
 @Composable
 fun MessageList(
@@ -54,25 +62,39 @@ fun MessageRow(line: Line) {
       }
     }
 
-    // LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
-    //   GlassPanel(Modifier.widthIn(max = 900.dp), blur = LocalTheme.current.blur) {
-    //     // Text(line.text, Modifier.padding(12.dp))
-    //     val md = rememberStreamingMarkdownState()
-    //     var fed by remember { mutableIntStateOf(0) }
-    //     LaunchedEffect(line.text) {
-    //       if (line.text.length > fed) {
-    //         md.append(line.text.substring(fed))
-    //         fed = line.text.length
-    //       }
-    //     }
-    //     Markdown(streamingMarkdownState = md, modifier = Modifier.padding(12.dp))
-    //   }
-    // }
+//    LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
+//      GlassPanel(Modifier.widthIn(max = 900.dp), blur = LocalTheme.current.blur) {
+//        val parsed = rememberMarkdownState(line.text, retainState = true, immediate = true)
+//        Markdown(parsed, modifier = Modifier.padding(12.dp))
+//      }
+//    }
 
     LineRole.AGENT -> Box(Modifier.fillMaxWidth(), Alignment.CenterStart) {
       GlassPanel(Modifier.widthIn(max = 900.dp), blur = LocalTheme.current.blur) {
-        val parsed = rememberMarkdownState(line.text, retainState = true, immediate = true)
-        Markdown(parsed, modifier = Modifier.padding(12.dp))
+      val theme = LocalTheme.current
+      val hl = remember(theme.dark) { 
+        Highlights.Builder().theme(SyntaxThemes.atom(darkMode = theme.dark)) 
+      }
+      val components = markdownComponents(
+        codeBlock = { 
+          MarkdownHighlightedCodeBlock(
+            content = it.content, 
+            node = it.node, 
+            highlightsBuilder = hl,
+            showHeader = true
+          ) 
+        },
+        codeFence = { 
+          MarkdownHighlightedCodeFence(
+            content = it.content, 
+            node = it.node, 
+            highlightsBuilder = hl,
+            showHeader = true
+          )
+        },
+      )
+      val parsed = rememberMarkdownState(line.text, retainState = true, immediate = true)
+      Markdown(parsed, components = components, modifier = Modifier.padding(12.dp))
       }
     }
 
